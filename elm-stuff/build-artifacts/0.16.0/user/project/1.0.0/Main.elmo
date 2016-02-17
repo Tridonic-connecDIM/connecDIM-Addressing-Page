@@ -1,0 +1,102 @@
+Elm.Main = Elm.Main || {};
+Elm.Main.make = function (_elm) {
+   "use strict";
+   _elm.Main = _elm.Main || {};
+   if (_elm.Main.values) return _elm.Main.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $Graphics$Element = Elm.Graphics.Element.make(_elm),
+   $Html = Elm.Html.make(_elm),
+   $Html$Events = Elm.Html.Events.make(_elm),
+   $Http = Elm.Http.make(_elm),
+   $Json$Encode = Elm.Json.Encode.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Maybe$Extra = Elm.Maybe.Extra.make(_elm),
+   $Regex = Elm.Regex.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
+   $String = Elm.String.make(_elm),
+   $Task = Elm.Task.make(_elm);
+   var _op = {};
+   var lookupGatewayMethod = function (json) {
+      var encoded_json = A2($Json$Encode.encode,0,json);
+      var toUrl = _U.cmp($String.length(encoded_json),
+      2) > 0 ? $Task.succeed(A2($Basics._op["++"],
+      "/cgi-bin/json.cgi?json=",
+      encoded_json)) : $Task.fail("Click the button, my dude");
+      return A2($Task.andThen,
+      toUrl,
+      function (_p0) {
+         return A2($Task.mapError,
+         function (x) {
+            return $Basics.toString(x);
+         },
+         $Http.getString(_p0));
+      });
+   };
+   var results = $Signal.mailbox($Result.Err(""));
+   var query = $Signal.mailbox($Json$Encode.object(_U.list([])));
+   var requests = Elm.Native.Task.make(_elm).performSignal("requests",
+   A2($Signal.map,
+   function (task) {
+      return A2($Task.andThen,
+      $Task.toResult(task),
+      $Signal.send(results.address));
+   },
+   A2($Signal.map,lookupGatewayMethod,query.signal)));
+   var view = function (result) {
+      var reg = $List.concat(A2($List.map,
+      $Maybe$Extra.maybeToList,
+      $List.concat(A2($List.map,
+      function (_) {
+         return _.submatches;
+      },
+      A3($Regex.find,
+      $Regex.All,
+      $Regex.regex(A2($Basics._op["++"],
+      $Regex.escape("<body>"),
+      A2($Basics._op["++"],"(.*)",$Regex.escape("</body>")))),
+      "\n    <html><head><meta charset=\'UTF-8\'></head><body> {\"result\":{\"mac\":\"001348026AFD\",\"hostname\":\"Test Gateway Main\",\"model\":\"256v1\",\"firmwareversion\":\"3.3.2.4\",\"repoversion\":\"fe129f39fca4\",\"activelines\":[1,2,4],\"linenames\":[\"Line 1\",\"Line 2\",\"Line 3\",\"Line 4\"],\"internalip\":\"146.108.214.37\",\"time\":1455690412,\"timezone\":\"Australia/Sydney\"},\"error\":null}</body></html>\n    ")))));
+      var value = function () {
+         var _p1 = result;
+         if (_p1.ctor === "Err") {
+               return $Html.fromElement($Graphics$Element.show(reg));
+            } else {
+               return $Html.fromElement($Graphics$Element.show($List.concat(A2($List.map,
+               $Maybe$Extra.maybeToList,
+               $List.concat(A2($List.map,
+               function (_) {
+                  return _.submatches;
+               },
+               A3($Regex.find,
+               $Regex.All,
+               $Regex.regex(A2($Basics._op["++"],
+               $Regex.escape("<body>"),
+               A2($Basics._op["++"],"\n(.*)",$Regex.escape("</body>")))),
+               _p1._0)))))));
+            }
+      }();
+      return A2($Html.div,
+      _U.list([]),
+      _U.list([A2($Html.button,
+              _U.list([A2($Html$Events.onClick,
+              query.address,
+              $Json$Encode.object(_U.list([{ctor: "_Tuple2"
+                                           ,_0: "method"
+                                           ,_1: $Json$Encode.string("readgateway")}
+                                          ,{ctor: "_Tuple2"
+                                           ,_0: "params"
+                                           ,_1: $Json$Encode.list(_U.list([]))}])))]),
+              _U.list([$Html.text("Read Gateway")]))
+              ,value]));
+   };
+   var main = A2($Signal.map,view,results.signal);
+   return _elm.Main.values = {_op: _op
+                             ,view: view
+                             ,main: main
+                             ,query: query
+                             ,results: results
+                             ,lookupGatewayMethod: lookupGatewayMethod};
+};
