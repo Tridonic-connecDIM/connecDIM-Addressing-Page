@@ -7079,153 +7079,6 @@ Elm.Array.make = function (_elm) {
                               ,foldl: foldl
                               ,foldr: foldr};
 };
-Elm.Maybe = Elm.Maybe || {};
-Elm.Maybe.Extra = Elm.Maybe.Extra || {};
-Elm.Maybe.Extra.make = function (_elm) {
-   "use strict";
-   _elm.Maybe = _elm.Maybe || {};
-   _elm.Maybe.Extra = _elm.Maybe.Extra || {};
-   if (_elm.Maybe.Extra.values) return _elm.Maybe.Extra.values;
-   var _U = Elm.Native.Utils.make(_elm),
-   $Array = Elm.Array.make(_elm),
-   $Basics = Elm.Basics.make(_elm),
-   $Debug = Elm.Debug.make(_elm),
-   $List = Elm.List.make(_elm),
-   $Maybe = Elm.Maybe.make(_elm),
-   $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm);
-   var _op = {};
-   var traverseArray = function (f) {
-      var step = F2(function (e,acc) {
-         var _p0 = f(e);
-         if (_p0.ctor === "Nothing") {
-               return $Maybe.Nothing;
-            } else {
-               return A2($Maybe.map,$Array.push(_p0._0),acc);
-            }
-      });
-      return A2($Array.foldl,step,$Maybe.Just($Array.empty));
-   };
-   var combineArray = traverseArray($Basics.identity);
-   var traverse = function (f) {
-      var step = F2(function (e,acc) {
-         var _p1 = f(e);
-         if (_p1.ctor === "Nothing") {
-               return $Maybe.Nothing;
-            } else {
-               return A2($Maybe.map,
-               F2(function (x,y) {
-                  return A2($List._op["::"],x,y);
-               })(_p1._0),
-               acc);
-            }
-      });
-      return A2($List.foldr,step,$Maybe.Just(_U.list([])));
-   };
-   var combine = traverse($Basics.identity);
-   var maybeToArray = function (m) {
-      var _p2 = m;
-      if (_p2.ctor === "Nothing") {
-            return $Array.empty;
-         } else {
-            return A2($Array.repeat,1,_p2._0);
-         }
-   };
-   var maybeToList = function (m) {
-      var _p3 = m;
-      if (_p3.ctor === "Nothing") {
-            return _U.list([]);
-         } else {
-            return _U.list([_p3._0]);
-         }
-   };
-   var or = F2(function (ma,mb) {
-      var _p4 = ma;
-      if (_p4.ctor === "Nothing") {
-            return mb;
-         } else {
-            return ma;
-         }
-   });
-   var andMap = F2(function (f,x) {
-      return A2($Maybe.andThen,
-      x,
-      function (x$) {
-         return A2($Maybe.andThen,
-         f,
-         function (f$) {
-            return $Maybe.Just(f$(x$));
-         });
-      });
-   });
-   var map5 = F6(function (f,a,b,c,d,e) {
-      return A2(andMap,
-      A2(andMap,A2(andMap,A2(andMap,A2($Maybe.map,f,a),b),c),d),
-      e);
-   });
-   var map4 = F5(function (f,a,b,c,d) {
-      return A2(andMap,
-      A2(andMap,A2(andMap,A2($Maybe.map,f,a),b),c),
-      d);
-   });
-   var map3 = F4(function (f,a,b,c) {
-      return A2(andMap,A2(andMap,A2($Maybe.map,f,a),b),c);
-   });
-   var map2 = F3(function (f,a,b) {
-      return A2(andMap,A2($Maybe.map,f,a),b);
-   });
-   var next = map2($Basics.flip($Basics.always));
-   var prev = map2($Basics.always);
-   var mapDefault = F3(function (d,f,m) {
-      return A2($Maybe.withDefault,d,A2($Maybe.map,f,m));
-   });
-   var isJust = function (m) {
-      var _p5 = m;
-      if (_p5.ctor === "Nothing") {
-            return false;
-         } else {
-            return true;
-         }
-   };
-   var isNothing = function (m) {
-      var _p6 = m;
-      if (_p6.ctor === "Nothing") {
-            return true;
-         } else {
-            return false;
-         }
-   };
-   var join = function (mx) {
-      var _p7 = mx;
-      if (_p7.ctor === "Just") {
-            return _p7._0;
-         } else {
-            return $Maybe.Nothing;
-         }
-   };
-   _op["?"] = F2(function (mx,x) {
-      return A2($Maybe.withDefault,x,mx);
-   });
-   return _elm.Maybe.Extra.values = {_op: _op
-                                    ,join: join
-                                    ,isNothing: isNothing
-                                    ,isJust: isJust
-                                    ,map2: map2
-                                    ,map3: map3
-                                    ,map4: map4
-                                    ,map5: map5
-                                    ,mapDefault: mapDefault
-                                    ,andMap: andMap
-                                    ,next: next
-                                    ,prev: prev
-                                    ,or: or
-                                    ,maybeToList: maybeToList
-                                    ,maybeToArray: maybeToArray
-                                    ,traverse: traverse
-                                    ,combine: combine
-                                    ,traverseArray: traverseArray
-                                    ,combineArray: combineArray};
-};
 Elm.Native.Char = {};
 Elm.Native.Char.make = function(localRuntime) {
 	localRuntime.Native = localRuntime.Native || {};
@@ -9277,169 +9130,6 @@ Elm.Json.Decode.make = function (_elm) {
                                     ,andThen: andThen
                                     ,value: value
                                     ,customDecoder: customDecoder};
-};
-Elm.Native.Regex = {};
-Elm.Native.Regex.make = function(localRuntime) {
-	localRuntime.Native = localRuntime.Native || {};
-	localRuntime.Native.Regex = localRuntime.Native.Regex || {};
-	if (localRuntime.Native.Regex.values)
-	{
-		return localRuntime.Native.Regex.values;
-	}
-	if ('values' in Elm.Native.Regex)
-	{
-		return localRuntime.Native.Regex.values = Elm.Native.Regex.values;
-	}
-
-	var List = Elm.Native.List.make(localRuntime);
-	var Maybe = Elm.Maybe.make(localRuntime);
-
-	function escape(str)
-	{
-		return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-	}
-	function caseInsensitive(re)
-	{
-		return new RegExp(re.source, 'gi');
-	}
-	function regex(raw)
-	{
-		return new RegExp(raw, 'g');
-	}
-
-	function contains(re, string)
-	{
-		return string.match(re) !== null;
-	}
-
-	function find(n, re, str)
-	{
-		n = n.ctor === 'All' ? Infinity : n._0;
-		var out = [];
-		var number = 0;
-		var string = str;
-		var lastIndex = re.lastIndex;
-		var prevLastIndex = -1;
-		var result;
-		while (number++ < n && (result = re.exec(string)))
-		{
-			if (prevLastIndex === re.lastIndex) break;
-			var i = result.length - 1;
-			var subs = new Array(i);
-			while (i > 0)
-			{
-				var submatch = result[i];
-				subs[--i] = submatch === undefined
-					? Maybe.Nothing
-					: Maybe.Just(submatch);
-			}
-			out.push({
-				match: result[0],
-				submatches: List.fromArray(subs),
-				index: result.index,
-				number: number
-			});
-			prevLastIndex = re.lastIndex;
-		}
-		re.lastIndex = lastIndex;
-		return List.fromArray(out);
-	}
-
-	function replace(n, re, replacer, string)
-	{
-		n = n.ctor === 'All' ? Infinity : n._0;
-		var count = 0;
-		function jsReplacer(match)
-		{
-			if (count++ >= n)
-			{
-				return match;
-			}
-			var i = arguments.length - 3;
-			var submatches = new Array(i);
-			while (i > 0)
-			{
-				var submatch = arguments[i];
-				submatches[--i] = submatch === undefined
-					? Maybe.Nothing
-					: Maybe.Just(submatch);
-			}
-			return replacer({
-				match: match,
-				submatches: List.fromArray(submatches),
-				index: arguments[i - 1],
-				number: count
-			});
-		}
-		return string.replace(re, jsReplacer);
-	}
-
-	function split(n, re, str)
-	{
-		n = n.ctor === 'All' ? Infinity : n._0;
-		if (n === Infinity)
-		{
-			return List.fromArray(str.split(re));
-		}
-		var string = str;
-		var result;
-		var out = [];
-		var start = re.lastIndex;
-		while (n--)
-		{
-			if (!(result = re.exec(string))) break;
-			out.push(string.slice(start, result.index));
-			start = re.lastIndex;
-		}
-		out.push(string.slice(start));
-		return List.fromArray(out);
-	}
-
-	return Elm.Native.Regex.values = {
-		regex: regex,
-		caseInsensitive: caseInsensitive,
-		escape: escape,
-
-		contains: F2(contains),
-		find: F3(find),
-		replace: F4(replace),
-		split: F3(split)
-	};
-};
-
-Elm.Regex = Elm.Regex || {};
-Elm.Regex.make = function (_elm) {
-   "use strict";
-   _elm.Regex = _elm.Regex || {};
-   if (_elm.Regex.values) return _elm.Regex.values;
-   var _U = Elm.Native.Utils.make(_elm),
-   $Maybe = Elm.Maybe.make(_elm),
-   $Native$Regex = Elm.Native.Regex.make(_elm);
-   var _op = {};
-   var split = $Native$Regex.split;
-   var replace = $Native$Regex.replace;
-   var find = $Native$Regex.find;
-   var AtMost = function (a) {    return {ctor: "AtMost",_0: a};};
-   var All = {ctor: "All"};
-   var Match = F4(function (a,b,c,d) {
-      return {match: a,submatches: b,index: c,number: d};
-   });
-   var contains = $Native$Regex.contains;
-   var caseInsensitive = $Native$Regex.caseInsensitive;
-   var regex = $Native$Regex.regex;
-   var escape = $Native$Regex.escape;
-   var Regex = {ctor: "Regex"};
-   return _elm.Regex.values = {_op: _op
-                              ,regex: regex
-                              ,escape: escape
-                              ,caseInsensitive: caseInsensitive
-                              ,contains: contains
-                              ,find: find
-                              ,replace: replace
-                              ,split: split
-                              ,Match: Match
-                              ,All: All
-                              ,AtMost: AtMost};
 };
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 
@@ -12214,85 +11904,94 @@ Elm.Main.make = function (_elm) {
    $Basics = Elm.Basics.make(_elm),
    $Debug = Elm.Debug.make(_elm),
    $Html = Elm.Html.make(_elm),
+   $Html$Attributes = Elm.Html.Attributes.make(_elm),
    $Html$Events = Elm.Html.Events.make(_elm),
    $Http = Elm.Http.make(_elm),
+   $Json$Decode = Elm.Json.Decode.make(_elm),
    $Json$Encode = Elm.Json.Encode.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
-   $Maybe$Extra = Elm.Maybe.Extra.make(_elm),
-   $Regex = Elm.Regex.make(_elm),
    $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm),
-   $String = Elm.String.make(_elm),
    $Task = Elm.Task.make(_elm);
    var _op = {};
-   var lookupGatewayMethod = function (json) {
-      var encoded_json = A2($Json$Encode.encode,0,json);
-      var toUrl = _U.cmp($String.length(encoded_json),
-      2) > 0 ? $Task.succeed(A2($Basics._op["++"],
-      "/cgi-bin/json.cgi?json=",
-      encoded_json)) : $Task.fail("Click the button, my dude");
-      return A2($Task.andThen,
-      toUrl,
-      function (_p0) {
-         return A2($Task.mapError,
-         function (x) {
-            return $Basics.toString(x);
-         },
-         $Http.getString(_p0));
-      });
-   };
    var results = $Signal.mailbox($Result.Err(""));
-   var query = $Signal.mailbox($Json$Encode.object(_U.list([])));
-   var requests = Elm.Native.Task.make(_elm).performSignal("requests",
-   A2($Signal.map,
-   function (task) {
-      return A2($Task.andThen,
-      $Task.toResult(task),
-      $Signal.send(results.address));
-   },
-   A2($Signal.map,lookupGatewayMethod,query.signal)));
-   var view = function (result) {
-      var value = function () {
-         var _p1 = result;
-         if (_p1.ctor === "Err") {
-               return A2($Html.div,
-               _U.list([]),
-               _U.list([$Html.text(_p1._0)]));
-            } else {
-               return A2($Html.div,
-               _U.list([]),
-               A2($List.map,
-               $Html.text,
-               $List.concat(A2($List.map,
-               $Maybe$Extra.maybeToList,
-               $List.concat(A2($List.map,
-               function (_) {
-                  return _.submatches;
-               },
-               A3($Regex.find,
-               $Regex.All,
-               $Regex.regex(A2($Basics._op["++"],
-               $Regex.escape("<body>"),
-               A2($Basics._op["++"],"(.*)",$Regex.escape("</body>")))),
-               _p1._0)))))));
-            }
-      }();
-      var reg = $List.concat(A2($List.map,
-      $Maybe$Extra.maybeToList,
-      $List.concat(A2($List.map,
-      function (_) {
-         return _.submatches;
+   var query = $Signal.mailbox($Json$Encode.object(_U.list([{ctor: "_Tuple2"
+                                                            ,_0: "method"
+                                                            ,_1: $Json$Encode.string("readgateway")}
+                                                           ,{ctor: "_Tuple2"
+                                                            ,_0: "params"
+                                                            ,_1: $Json$Encode.list(_U.list([]))}])));
+   var echoJson = function (value) {
+      return $Json$Encode.object(_U.list([{ctor: "_Tuple2"
+                                          ,_0: "method"
+                                          ,_1: $Json$Encode.string("echo")}
+                                         ,{ctor: "_Tuple2"
+                                          ,_0: "params"
+                                          ,_1: $Json$Encode.list(_U.list([value]))}]));
+   };
+   var myStyle = $Html$Attributes.style(_U.list([{ctor: "_Tuple2"
+                                                 ,_0: "width"
+                                                 ,_1: "100%"}
+                                                ,{ctor: "_Tuple2",_0: "height",_1: "40px"}
+                                                ,{ctor: "_Tuple2",_0: "padding",_1: "10px 0"}
+                                                ,{ctor: "_Tuple2",_0: "font-size",_1: "2em"}
+                                                ,{ctor: "_Tuple2",_0: "text-align",_1: "center"}]));
+   var view = F2(function (address,model) {
+      var deviceImages = $List.map(function (deviceType) {
+         var _p0 = deviceType;
+         switch (_p0)
+         {case 1: return "emergency";
+            case 2: return "hid";
+            case 3: return "downlight";
+            case 4: return "incandescent";
+            case 5: return "converter";
+            case 6: return "led";
+            case 7: return "relay";
+            case 8: return "colour_control";
+            case 254: return "msensor";
+            default: return "fluoro";}
+      });
+      var devicesDiv = A2($List.map,
+      function (device) {
+         return A2($Html.div,
+         _U.list([]),
+         A2($Basics._op["++"],
+         A2($List.map,
+         function (imgName) {
+            return A2($Html.img,
+            _U.list([$Html$Attributes.src(A2($Basics._op["++"],
+            "/img/type_",
+            A2($Basics._op["++"],imgName,".png")))]),
+            _U.list([]));
+         },
+         deviceImages(device.types)),
+         _U.list([$Html.text(A2($Basics._op["++"],
+         "Assigned address ",
+         A2($Basics._op["++"],
+         $Basics.toString(device.address),
+         " to device")))])));
       },
-      A3($Regex.find,
-      $Regex.All,
-      $Regex.regex(A2($Basics._op["++"],
-      $Regex.escape("<body>"),
-      A2($Basics._op["++"],"(.*)",$Regex.escape("</body>")))),
-      "\n    <html><head><meta charset=\'UTF-8\'></head><body> {\"result\":{\"mac\":\"001348026AFD\",\"hostname\":\"Test Gateway Main\",\"model\":\"256v1\",\"firmwareversion\":\"3.3.2.4\",\"repoversion\":\"fe129f39fca4\",\"activelines\":[1,2,4],\"linenames\":[\"Line 1\",\"Line 2\",\"Line 3\",\"Line 4\"],\"internalip\":\"146.108.214.37\",\"time\":1455690412,\"timezone\":\"Australia/Sydney\"},\"error\":null}</body></html>\n    ")))));
+      model.addressedDevices);
       return A2($Html.div,
-      _U.list([]),
-      _U.list([A2($Html.button,
+      _U.list([myStyle]),
+      A2($Basics._op["++"],
+      _U.list([A2($Html.div,
+              _U.list([]),
+              _U.list([$Html.text(model.name)]))
+              ,A2($Html.div,_U.list([]),_U.list([$Html.text(model.mac)]))
+              ,A2($Html.div,_U.list([]),_U.list([$Html.text(model.error)]))
+              ,A2($Html.button,
+              _U.list([A2($Html$Events.onClick,
+              query.address,
+              $Json$Encode.object(_U.list([{ctor: "_Tuple2"
+                                           ,_0: "method"
+                                           ,_1: $Json$Encode.string("setunaddressed")}
+                                          ,{ctor: "_Tuple2"
+                                           ,_0: "params"
+                                           ,_1: $Json$Encode.list(_U.list([$Json$Encode.$int(1)]))}])))]),
+              _U.list([$Html.text("Start Addressing")]))
+              ,A2($Html.button,
               _U.list([A2($Html$Events.onClick,
               query.address,
               $Json$Encode.object(_U.list([{ctor: "_Tuple2"
@@ -12301,14 +12000,151 @@ Elm.Main.make = function (_elm) {
                                           ,{ctor: "_Tuple2"
                                            ,_0: "params"
                                            ,_1: $Json$Encode.list(_U.list([]))}])))]),
-              _U.list([$Html.text("Read Gateway")]))
-              ,value]));
+              _U.list([$Html.text("Stop Addressing")]))]),
+      devicesDiv));
+   });
+   var update = F2(function (action,model) {
+      var _p1 = action;
+      if (_p1.ctor === "Ok") {
+            var _p2 = _p1._0;
+            switch (_p2.ctor)
+            {case "NoOp": return model;
+               case "DisplayError": return _U.update(model,{error: _p2._0});
+               case "StartAddressing": return _U.update(model,
+                 {addressing: true});
+               case "StopAddressing": return _U.update(model,
+                 {addressing: false});
+               case "AddDevice": return _U.update(model,
+                 {addressedDevices: A2($Basics._op["++"],
+                 model.addressedDevices,
+                 _U.list([{address: _p2._0,types: _p2._1}]))
+                 ,error: ""});
+               case "SetGatewayData": return _U.update(model,
+                 {mac: _p2._0
+                 ,name: _p2._1
+                 ,lines: _p2._2
+                 ,lineNames: _p2._3
+                 ,error: ""});
+               default: return _U.eq(_p2._0,0) ? _U.update(model,
+                 {addressing: false,error: ""}) : _U.update(model,{error: ""});}
+         } else {
+            return _U.update(model,{addressing: false,error: _p1._0});
+         }
+   });
+   var UnaddressedState = function (a) {
+      return {ctor: "UnaddressedState",_0: a};
    };
-   var main = A2($Signal.map,view,results.signal);
+   var SetGatewayData = F4(function (a,b,c,d) {
+      return {ctor: "SetGatewayData",_0: a,_1: b,_2: c,_3: d};
+   });
+   var AddDevice = F2(function (a,b) {
+      return {ctor: "AddDevice",_0: a,_1: b};
+   });
+   var StopAddressing = {ctor: "StopAddressing"};
+   var StartAddressing = {ctor: "StartAddressing"};
+   var DisplayError = function (a) {
+      return {ctor: "DisplayError",_0: a};
+   };
+   var gatewayResolve = $Json$Decode.oneOf(_U.list([A2($Json$Decode.object1,
+                                                   DisplayError,
+                                                   A2($Json$Decode.at,
+                                                   _U.list(["error","message"]),
+                                                   $Json$Decode.string))
+                                                   ,A5($Json$Decode.object4,
+                                                   SetGatewayData,
+                                                   A2($Json$Decode.at,
+                                                   _U.list(["result","mac"]),
+                                                   $Json$Decode.string),
+                                                   A2($Json$Decode.at,
+                                                   _U.list(["result","hostname"]),
+                                                   $Json$Decode.string),
+                                                   A2($Json$Decode.at,
+                                                   _U.list(["result","activelines"]),
+                                                   $Json$Decode.list($Json$Decode.$int)),
+                                                   A2($Json$Decode.at,
+                                                   _U.list(["result","linenames"]),
+                                                   $Json$Decode.list($Json$Decode.string)))
+                                                   ,A3($Json$Decode.object2,
+                                                   AddDevice,
+                                                   A2($Json$Decode.at,
+                                                   _U.list(["result","address"]),
+                                                   $Json$Decode.$int),
+                                                   A2($Json$Decode.at,
+                                                   _U.list(["result","type"]),
+                                                   $Json$Decode.list($Json$Decode.$int)))
+                                                   ,A2($Json$Decode.object1,
+                                                   UnaddressedState,
+                                                   A2($Json$Decode.at,
+                                                   _U.list(["result","unaddressed"]),
+                                                   $Json$Decode.$int))]));
+   var lookupGatewayMethod = function (json) {
+      var encoded_json = A2($Json$Encode.encode,0,json);
+      var toUrl = _U.eq(encoded_json,
+      "null") ? $Task.fail("Null JSON is invalid") : $Task.succeed(A2($Basics._op["++"],
+      "/cgi-bin/json.cgi?json=",
+      encoded_json));
+      return A2($Task.andThen,
+      toUrl,
+      function (_p3) {
+         return A2($Task.mapError,
+         function (x) {
+            return $Basics.toString(x);
+         },
+         A2($Http.get,gatewayResolve,_p3));
+      });
+   };
+   var NoOp = {ctor: "NoOp"};
+   var actions = $Signal.mailbox($Result.Ok(NoOp));
+   var model = A3($Signal.foldp,
+   update,
+   {mac: ""
+   ,name: ""
+   ,lines: _U.list([])
+   ,lineNames: _U.list([])
+   ,addressedDevices: _U.list([])
+   ,addressing: false
+   ,error: ""},
+   actions.signal);
+   var main = A2($Signal.map,view(actions.address),model);
+   var requests = Elm.Native.Task.make(_elm).performSignal("requests",
+   A2($Signal.map,
+   function (task) {
+      return A2($Task.andThen,
+      $Task.toResult(task),
+      $Signal.send(actions.address));
+   },
+   A2($Signal.map,lookupGatewayMethod,query.signal)));
+   var Model = F7(function (a,b,c,d,e,f,g) {
+      return {mac: a
+             ,name: b
+             ,lines: c
+             ,lineNames: d
+             ,addressedDevices: e
+             ,addressing: f
+             ,error: g};
+   });
+   var AddressedDevice = F2(function (a,b) {
+      return {address: a,types: b};
+   });
    return _elm.Main.values = {_op: _op
-                             ,view: view
+                             ,AddressedDevice: AddressedDevice
+                             ,Model: Model
+                             ,NoOp: NoOp
+                             ,DisplayError: DisplayError
+                             ,StartAddressing: StartAddressing
+                             ,StopAddressing: StopAddressing
+                             ,AddDevice: AddDevice
+                             ,SetGatewayData: SetGatewayData
+                             ,UnaddressedState: UnaddressedState
                              ,main: main
+                             ,update: update
+                             ,model: model
+                             ,view: view
+                             ,myStyle: myStyle
+                             ,echoJson: echoJson
                              ,query: query
                              ,results: results
-                             ,lookupGatewayMethod: lookupGatewayMethod};
+                             ,actions: actions
+                             ,lookupGatewayMethod: lookupGatewayMethod
+                             ,gatewayResolve: gatewayResolve};
 };

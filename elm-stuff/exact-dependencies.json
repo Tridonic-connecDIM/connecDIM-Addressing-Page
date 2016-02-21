@@ -1,4 +1,5 @@
 {
+    "evancz/elm-effects": "2.0.1",
     "circuithub/elm-maybe-extra": "1.6.0",
     "evancz/virtual-dom": "2.1.0",
     "evancz/elm-http": "3.0.0",
