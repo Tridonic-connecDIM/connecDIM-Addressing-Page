@@ -81,29 +81,61 @@ update action model =
           , error = ""
           }
         SetAddressingLine line ->
-          {model | addressingLine = Just line}
-        EraseError ->
-          {model | error = ""}
-        DisplayError e ->
-          {model | error = e}
-        StartAddressing ->
-          {model | addressing = True}
-        StopAddressing ->
-          {model | addressing = False}
-        SetUnusedAddresses addresses ->
-          {model | unusedAddresses = addresses}
-        AddDevice a t ->
           { model
-          | addressedDevices = model.addressedDevices ++ [{address = a, types = t}]
-          , unusedAddresses = List.drop 1 model.unusedAddresses
+          | addressingLine = Just line
           }
+        EraseError ->
+          { model
+          | error = ""
+          }
+        DisplayError e ->
+          { model
+          | error = e
+          }
+        StartAddressing ->
+          { model
+          | addressing = True
+          }
+        StopAddressing ->
+          { model
+          | addressing = False
+          }
+        SetUnusedAddresses addresses ->
+          { model
+          | unusedAddresses = addresses
+          }
+        AddDevice a t ->
+          if model.addressing
+          then
+            { model
+            | addressedDevices = model.addressedDevices ++ [{address = a, types = t}]
+            , unusedAddresses = List.drop 1 model.unusedAddresses
+            }
+          else
+            model
         SetGatewayData macAddr hostname activeLines lineNames'  ->
-          {model | mac = macAddr, name = hostname, lines = activeLines, lineNames = lineNames'}
+          { model
+          | mac = macAddr
+          , name = hostname
+          , lines = activeLines
+          , lineNames = lineNames'
+          }
         UnaddressedState state ->
           if state == 0
-          then {model | unaddressedState = Just False, error = "There are no unaddressed devices", addressing = False}
-          else {model | unaddressedState = Just True}
-    Err e -> {model | addressing = False, error = e}
+          then
+            { model
+            | unaddressedState = Just False
+            , error = "There are no unaddressed devices"
+            , addressing = False}
+          else
+            { model
+            | unaddressedState = Just True
+            }
+    Err e ->
+      { model
+      | addressing = False
+      , error = e
+      }
 
 -- The application's state
 model : Signal Model
@@ -128,34 +160,40 @@ activeLines model =
   |> List.filter
     (\(line, name) -> List.member line model.lines)
 
+deviceTypeToImageName : Int -> String
+deviceTypeToImageName deviceType =
+  case deviceType of
+    1 -> "emergency"
+    2 -> "hid"
+    3 -> "downlight"
+    4 -> "incandescent"
+    5 -> "converter"
+    6 -> "led"
+    7 -> "relay"
+    8 -> "colour_control"
+    254 -> "msensor"
+    _ -> "fluoro"
+
+deviceTypesToImages : List Int -> List Html
+deviceTypesToImages =
+  List.map deviceTypeToImageName >> List.map (\imgName -> img [src <| "/img/type_" ++ imgName ++ ".png"] [])
+
+devicesToDivList : List AddressedDevice -> List Html
+devicesToDivList =
+  List.map (\device -> div [] <| deviceTypesToImages device.types ++ [ text <| "Assigned address " ++ toString device.address ++ " to device" ])
+
 view : Signal.Address (Result String Action) -> Model -> Html
 view address model =
-  let deviceImages = List.map (\deviceType -> case deviceType of
-                                                1 -> "emergency"
-                                                2 -> "hid"
-                                                3 -> "downlight"
-                                                4 -> "incandescent"
-                                                5 -> "converter"
-                                                6 -> "led"
-                                                7 -> "relay"
-                                                8 -> "colour_control"
-                                                254 -> "msensor"
-                                                _ -> "fluoro")
-
-      devicesDiv =
-        List.map (\device -> div [] <| (List.map (\imgName -> img [src <| "/img/type_" ++ imgName ++ ".png"] []) <| deviceImages device.types) ++
-                              [ text <| "Assigned address " ++ toString device.address ++ " to device"
-                              ]) model.addressedDevices
-
+  let returnButton = button [ onClick address <| Ok UnsetAddressingLine ] [ text "Return" ]
       buttons = if isJust model.addressingLine
                 then
                   case model.unaddressedState of
                     Just True ->
                       if model.addressing == False
-                      then [ button [ onClick address <| Ok StartAddressing ] [ text "Start Addressing" ] ]
+                      then [ button [ onClick address <| Ok StartAddressing ] [ text "Start Addressing" ], returnButton ]
                       else [ button [ onClick address <| Ok StopAddressing ] [ text "Stop Addressing" ] ]
                     Just False ->
-                      [ button [ onClick address <| Ok UnsetAddressingLine ] [ text "Return" ] ]
+                      [ returnButton ]
                     Nothing ->
                       []
                 else
@@ -180,9 +218,7 @@ view address model =
             ""]
       , div [] [ text model.error ]
       ]
-      ++ buttons
-      ++ List.map (\item -> div [] [item]) devicesDiv
-      ++ List.map (\item -> div [] [item]) loadingWheel
+      ++ List.map (\item -> div [] [item]) (buttons ++ devicesToDivList model.addressedDevices ++ loadingWheel)
 
 myStyle : Attribute
 myStyle =
@@ -233,7 +269,9 @@ sendJsonBasedOnModel (model, action) =
           SetAddressingLine _ ->
             sendQuery findUnaddressedQuery
           AddDevice _ _ ->
-            sendQuery findUnaddressedQuery
+            if model.addressing == True
+            then sendQuery findUnaddressedQuery
+            else succeed ()
           StartAddressing ->
             sendQuery setUnaddressedQuery
           UnaddressedState state ->
