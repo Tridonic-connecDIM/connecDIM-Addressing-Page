@@ -119,8 +119,8 @@ model =
                       , unusedAddresses = []
                       } actions.signal
 
-activeLineNumbersAndNames : Model -> List (Int, String)
-activeLineNumbersAndNames model =
+activeLines : Model -> List (Int, String)
+activeLines model =
   List.indexedMap
     (\index name -> (index + 1, name)) model.lineNames
   |> List.filter
@@ -157,7 +157,7 @@ view address model =
                     Nothing ->
                       []
                 else
-                  List.map (\(line, name) -> button [onClick address <| Ok <| SetAddressingLine line] [ text <| "Address " ++ name ++ " (" ++ toString line ++ ")" ]) (activeLineNumbersAndNames model)
+                  List.map (\(line, name) -> button [onClick address <| Ok <| SetAddressingLine line] [ text <| "Address " ++ name ++ " (" ++ toString line ++ ")" ]) (activeLines model)
       loadingWheel =
         if model.addressing || String.length model.mac == 0 || isJust model.addressingLine && isNothing model.unaddressedState
         then
