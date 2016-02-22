@@ -105,6 +105,7 @@ update action model =
           else {model | unaddressedState = Just True}
     Err e -> {model | addressing = False, error = e}
 
+-- The application's state
 model : Signal Model
 model =
   Signal.foldp update { mac = ""
@@ -119,6 +120,7 @@ model =
                       , unusedAddresses = []
                       } actions.signal
 
+-- Pair the line names with line numbers and filter out the inactive lines
 activeLines : Model -> List (Int, String)
 activeLines model =
   List.indexedMap
@@ -159,15 +161,11 @@ view address model =
                 else
                   List.map (\(line, name) -> button [onClick address <| Ok <| SetAddressingLine line] [ text <| "Address " ++ name ++ " (" ++ toString line ++ ")" ]) (activeLines model)
       loadingWheel =
-        if model.addressing || String.length model.mac == 0 || isJust model.addressingLine && isNothing model.unaddressedState
+        if model.addressing
+        || String.length model.mac == 0
+        || isJust model.addressingLine && isNothing model.unaddressedState
         then
-          [ img
-            [ src <| "/img/loading.gif"
-            , width 20
-            , height 20
-            ]
-            []
-          ]
+          [ img [ src "/img/loading.gif", width 20, height 20] [] ]
         else
           []
   in
@@ -183,14 +181,13 @@ view address model =
       , div [] [ text model.error ]
       ]
       ++ buttons
-      ++ devicesDiv
-      ++ loadingWheel
+      ++ List.map (\item -> div [] [item]) devicesDiv
+      ++ List.map (\item -> div [] [item]) loadingWheel
 
 myStyle : Attribute
 myStyle =
   style
     [ ("width", "100%")
-    , ("padding", "10px 0")
     , ("font-size", "2em")
     , ("text-align", "center")
     ]
