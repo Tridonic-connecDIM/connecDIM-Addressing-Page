@@ -73,7 +73,13 @@ update action model =
         NoOp ->
           model
         UnsetAddressingLine ->
-          {model | addressingLine = Nothing, unaddressedState = Nothing, addressedDevices = [], error = ""}
+          { model
+          | addressingLine = Nothing
+          , unaddressedState = Nothing
+          , unusedAddresses = []
+          , addressedDevices = []
+          , error = ""
+          }
         SetAddressingLine line ->
           {model | addressingLine = Just line}
         EraseError ->
@@ -87,7 +93,10 @@ update action model =
         SetUnusedAddresses addresses ->
           {model | unusedAddresses = addresses}
         AddDevice a t ->
-          {model | addressedDevices = model.addressedDevices ++ [{address = a, types = t}]}
+          { model
+          | addressedDevices = model.addressedDevices ++ [{address = a, types = t}]
+          , unusedAddresses = List.drop 1 model.unusedAddresses
+          }
         SetGatewayData macAddr hostname activeLines lineNames'  ->
           {model | mac = macAddr, name = hostname, lines = activeLines, lineNames = lineNames'}
         UnaddressedState state ->
@@ -109,6 +118,13 @@ model =
                       , error = ""
                       , unusedAddresses = []
                       } actions.signal
+
+activeLineNumbersAndNames : Model -> List (Int, String)
+activeLineNumbersAndNames model =
+  List.indexedMap
+    (\index name -> (index + 1, name)) model.lineNames
+  |> List.filter
+    (\(line, name) -> List.member line model.lines)
 
 view : Signal.Address (Result String Action) -> Model -> Html
 view address model =
@@ -136,29 +152,44 @@ view address model =
                       if model.addressing == False
                       then [ button [ onClick address <| Ok StartAddressing ] [ text "Start Addressing" ] ]
                       else [ button [ onClick address <| Ok StopAddressing ] [ text "Stop Addressing" ] ]
-                    Just False -> [ button [ onClick address <| Ok UnsetAddressingLine ] [ text "Return" ] ]
-                    Nothing -> []
+                    Just False ->
+                      [ button [ onClick address <| Ok UnsetAddressingLine ] [ text "Return" ] ]
+                    Nothing ->
+                      []
                 else
-                  List.map (\line -> button [onClick address <| Ok <| SetAddressingLine line] [ text <| "Address Line " ++ toString line ]) model.lines
+                  List.map (\(line, name) -> button [onClick address <| Ok <| SetAddressingLine line] [ text <| "Address " ++ name ++ " (" ++ toString line ++ ")" ]) (activeLineNumbersAndNames model)
+      loadingWheel =
+        if model.addressing || String.length model.mac == 0 || isJust model.addressingLine && isNothing model.unaddressedState
+        then
+          [ img
+            [ src <| "/img/loading.gif"
+            , width 20
+            , height 20
+            ]
+            []
+          ]
+        else
+          []
   in
     div [myStyle] <|
       [ div [] [ text model.name ]
       , div [] [ text model.mac ]
       , div [] [ text <|
         case model.addressingLine of
-          Just a -> "Line " ++ toString a
-          Nothing -> ""]
+          Just a ->
+            "Line " ++ toString a
+          Nothing ->
+            ""]
       , div [] [ text model.error ]
-      , div [] [ text <| if String.length model.mac == 0 then "Loading…" else "" ]
       ]
       ++ buttons
       ++ devicesDiv
+      ++ loadingWheel
 
 myStyle : Attribute
 myStyle =
   style
     [ ("width", "100%")
-    , ("height", "40px")
     , ("padding", "10px 0")
     , ("font-size", "2em")
     , ("text-align", "center")
@@ -226,12 +257,13 @@ lookupGatewayMethod json =
   in
     toUrl `andThen` (Http.get gatewayResolve >> mapError (\x -> toString x))
 
+-- lineToUnusedAddresses :
+
 gatewayResolve : Decode.Decoder Action
 gatewayResolve =
   Decode.oneOf
     [ Decode.object1 DisplayError (Decode.at ["error", "message"] Decode.string)
     , Decode.object4 SetGatewayData (Decode.at ["result", "mac"] Decode.string) (Decode.at ["result", "hostname"] Decode.string) (Decode.at ["result", "activelines"] <| Decode.list Decode.int) (Decode.at ["result", "linenames"] <| Decode.list Decode.string)
     , Decode.object2 AddDevice (Decode.at ["result", "address"] Decode.int) (Decode.at ["result", "type"] <| Decode.list Decode.int)
-    , Decode.object1 UnaddressedState (Decode.at ["result", "unaddressed"] Decode.int)
     , Decode.object1 UnaddressedState (Decode.at ["result", "unaddressed"] Decode.int)
     ]
