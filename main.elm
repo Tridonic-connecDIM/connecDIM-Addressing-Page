@@ -43,21 +43,13 @@ type Action = NoOp
 port title : String
 port title = "Addressing Sorceress"
 
-setUnaddressedQuery : Maybe Int -> Encode.Value
-setUnaddressedQuery maybeLine =
-  case maybeLine of
-    Just line ->
-      Encode.object [ ("method", Encode.string "setunaddressed"), ("params", Encode.list [Encode.int line]) ]
-    Nothing ->
-      Encode.null
+setUnaddressedQuery : Int -> Encode.Value
+setUnaddressedQuery line =
+  Encode.object [ ("method", Encode.string "setunaddressed"), ("params", Encode.list [Encode.int line]) ]
 
-findUnaddressedQuery : Maybe Int -> Encode.Value
-findUnaddressedQuery maybeLine =
-  case maybeLine of
-    Just line ->
-      Encode.object [ ("method", Encode.string "findunaddressed"), ("params", Encode.list [Encode.int line]) ]
-    Nothing ->
-      Encode.null
+findUnaddressedQuery : Int -> Encode.Value
+findUnaddressedQuery line =
+  Encode.object [ ("method", Encode.string "findunaddressed"), ("params", Encode.list [Encode.int line]) ]
 
 readGatewayQuery : Encode.Value
 readGatewayQuery = Encode.object [ ("method", Encode.string "readgateway"), ("params", Encode.list []) ]
@@ -247,7 +239,7 @@ port requests =
 
 port addressingAssistant : Signal (Task x ())
 port addressingAssistant =
-  Signal.map sendJsonBasedOnModel (Signal.dropRepeats (Signal.zip model actions.signal))
+  Signal.map sendAddressingJsonBasedOnModel (Signal.dropRepeats (Signal.zip model actions.signal))
 
 resultToAction : Result String Action -> Action
 resultToAction result =
@@ -261,10 +253,15 @@ taskMapReplace : Task x a -> b -> Task x b
 taskMapReplace task returnValue =
   Task.map (\_ -> returnValue) task
 
-sendJsonBasedOnModel : (Model, Action) -> Task a ()
-sendJsonBasedOnModel (model, action) =
+sendAddressingJsonBasedOnModel : (Model, Action) -> Task a ()
+sendAddressingJsonBasedOnModel (model, action) =
   let
-    sendQuery a = Signal.send query.address <| a model.addressingLine
+    sendQuery a =
+      case (Maybe.map (a >> Signal.send query.address) model.addressingLine) of
+        Just task ->
+          task
+        Nothing ->
+          succeed ()
   in
     case action of
       SetAddressingLine _ ->
