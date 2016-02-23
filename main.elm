@@ -143,7 +143,7 @@ activeLines model =
   List.indexedMap
     (\index name -> (index + 1, name)) model.lineNames
   |> List.filter
-    (\(line, name) -> List.member line model.lines)
+    (\(line, _) -> List.member line model.lines)
 
 deviceTypeToImageName : Int -> String
 deviceTypeToImageName deviceType =
@@ -167,7 +167,7 @@ devicesToDivList : List AddressedDevice -> List Html
 devicesToDivList =
   List.map (\device -> div [] <| deviceTypesToImages device.types ++ [ text <| "Assigned address " ++ toString device.address ++ " to device" ])
 
-view : Signal.Address Action -> Model -> Html
+view : Signal.Address (Action) -> Model -> Html
 view address model =
   let returnButton = button [ onClick address <| UnsetAddressingLine ] [ text "Return" ]
       buttons = if isJust model.addressingLine
