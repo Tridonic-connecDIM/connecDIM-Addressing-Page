@@ -167,7 +167,7 @@ devicesToDivList : List AddressedDevice -> List Html
 devicesToDivList =
   List.map (\device -> div [] <| deviceTypesToImages device.types ++ [ text <| "Assigned address " ++ toString device.address ++ " to device" ])
 
-view : Signal.Address (Action) -> Model -> Html
+view : Signal.Address Action -> Model -> Html
 view address model =
   let returnButton = button [ onClick address <| UnsetAddressingLine ] [ text "Return" ]
       buttons = if isJust model.addressingLine
@@ -221,11 +221,11 @@ query : Signal.Mailbox Encode.Value
 query =
   Signal.mailbox <| readGatewayQuery
 
-results : Signal.Mailbox (Action)
+results : Signal.Mailbox Action
 results =
   Signal.mailbox <| NoOp
 
-actions : Signal.Mailbox (Action)
+actions : Signal.Mailbox Action
 actions =
   Signal.mailbox <| NoOp
 
@@ -233,25 +233,18 @@ port requests : Signal (Task x ())
 port requests =
   Signal.map lookupGatewayMethod query.signal
   |> Signal.map
-    (\task -> taskMapReplace (Signal.send actions.address <| EraseError) task
+    (\task -> Task.map (\_ -> task) (Signal.send actions.address <| EraseError)
     `andThen` Task.toResult
-    `andThen` (resultToAction >> Signal.send actions.address))
+    `andThen` ((\result ->
+                case result of
+                  Ok action ->
+                    action
+                  Err e ->
+                    DisplayError e) >> Signal.send actions.address))
 
 port addressingAssistant : Signal (Task x ())
 port addressingAssistant =
   Signal.map sendAddressingJsonBasedOnModel (Signal.dropRepeats (Signal.zip model actions.signal))
-
-resultToAction : Result String Action -> Action
-resultToAction result =
-  case result of
-    Ok action ->
-      action
-    Err e ->
-      DisplayError e
-
-taskMapReplace : Task x a -> b -> Task x b
-taskMapReplace task returnValue =
-  Task.map (\_ -> returnValue) task
 
 sendAddressingJsonBasedOnModel : (Model, Action) -> Task a ()
 sendAddressingJsonBasedOnModel (model, action) =
