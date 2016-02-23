@@ -161,7 +161,8 @@ deviceTypeToImageName deviceType =
 
 deviceTypesToImages : List Int -> List Html
 deviceTypesToImages =
-  List.map deviceTypeToImageName >> List.map (\imgName -> img [src <| "/img/type_" ++ imgName ++ ".png"] [])
+  List.map deviceTypeToImageName
+  >> List.map (\imgName -> img [src <| "/img/type_" ++ imgName ++ ".png"] [])
 
 devicesToDivList : List AddressedDevice -> List Html
 devicesToDivList =
@@ -191,16 +192,16 @@ view address model =
           [ img [ src "/img/loading.gif", width 20, height 20] [] ]
         else
           []
+      lineName = case model.addressingLine of
+        Just a ->
+          "Line " ++ toString a
+        Nothing ->
+          ""
   in
     div [myStyle] <|
       [ div [] [ text model.name ]
       , div [] [ text model.mac ]
-      , div [] [ text <|
-        case model.addressingLine of
-          Just a ->
-            "Line " ++ toString a
-          Nothing ->
-            ""]
+      , div [] [ text <| lineName]
       , div [] [ text model.error ]
       ]
       ++ List.map (\item -> div [] [item]) (buttons ++ devicesToDivList model.addressedDevices ++ loadingWheel)
