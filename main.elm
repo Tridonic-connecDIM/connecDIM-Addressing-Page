@@ -222,10 +222,6 @@ query : Signal.Mailbox Encode.Value
 query =
   Signal.mailbox <| readGatewayQuery
 
-results : Signal.Mailbox Action
-results =
-  Signal.mailbox <| NoOp
-
 actions : Signal.Mailbox Action
 actions =
   Signal.mailbox <| NoOp
