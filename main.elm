@@ -65,77 +65,70 @@ readGatewayQuery = Encode.object [ ("method", Encode.string "readgateway"), ("pa
 main =
   Signal.map (view actions.address) model
 
-update : Result String Action -> Model -> Model
+update : Action -> Model -> Model
 update action model =
   case action of
-    Ok a ->
-      case a of
-        NoOp ->
-          model
-        UnsetAddressingLine ->
-          { model
-          | addressingLine = Nothing
-          , unaddressedState = Nothing
-          , unusedAddresses = []
-          , addressedDevices = []
-          , error = ""
-          }
-        SetAddressingLine line ->
-          { model
-          | addressingLine = Just line
-          }
-        EraseError ->
-          { model
-          | error = ""
-          }
-        DisplayError e ->
-          { model
-          | error = e
-          }
-        StartAddressing ->
-          { model
-          | addressing = True
-          }
-        StopAddressing ->
-          { model
-          | addressing = False
-          }
-        SetUnusedAddresses addresses ->
-          { model
-          | unusedAddresses = addresses
-          }
-        AddDevice a t ->
-          if model.addressing
-          then
-            { model
-            | addressedDevices = model.addressedDevices ++ [{address = a, types = t}]
-            , unusedAddresses = List.drop 1 model.unusedAddresses
-            }
-          else
-            model
-        SetGatewayData macAddr hostname activeLines lineNames'  ->
-          { model
-          | mac = macAddr
-          , name = hostname
-          , lines = activeLines
-          , lineNames = lineNames'
-          }
-        UnaddressedState state ->
-          if state == 0
-          then
-            { model
-            | unaddressedState = Just False
-            , error = "There are no unaddressed devices"
-            , addressing = False}
-          else
-            { model
-            | unaddressedState = Just True
-            }
-    Err e ->
+    NoOp ->
+      model
+    UnsetAddressingLine ->
+      { model
+      | addressingLine = Nothing
+      , unaddressedState = Nothing
+      , unusedAddresses = []
+      , addressedDevices = []
+      , error = ""
+      }
+    SetAddressingLine line ->
+      { model
+      | addressingLine = Just line
+      }
+    EraseError ->
+      { model
+      | error = ""
+      }
+    DisplayError e ->
+      { model
+      | error = e
+      }
+    StartAddressing ->
+      { model
+      | addressing = True
+      }
+    StopAddressing ->
       { model
       | addressing = False
-      , error = e
       }
+    SetUnusedAddresses addresses ->
+      { model
+      | unusedAddresses = addresses
+      }
+    AddDevice a t ->
+      if model.addressing
+      then
+        { model
+        | addressedDevices = model.addressedDevices ++ [{address = a, types = t}]
+        , unusedAddresses = List.drop 1 model.unusedAddresses
+        }
+      else
+        model
+    SetGatewayData macAddr hostname activeLines lineNames'  ->
+      { model
+      | mac = macAddr
+      , name = hostname
+      , lines = activeLines
+      , lineNames = lineNames'
+      }
+    UnaddressedState state ->
+      if state == 0
+      then
+        { model
+        | unaddressedState = Just False
+        , error = "There are no unaddressed devices"
+        , addressing = False}
+      else
+        { model
+        | unaddressedState = Just True
+        }
 
 -- The application's state
 model : Signal Model
@@ -182,22 +175,22 @@ devicesToDivList : List AddressedDevice -> List Html
 devicesToDivList =
   List.map (\device -> div [] <| deviceTypesToImages device.types ++ [ text <| "Assigned address " ++ toString device.address ++ " to device" ])
 
-view : Signal.Address (Result String Action) -> Model -> Html
+view : Signal.Address (Action) -> Model -> Html
 view address model =
-  let returnButton = button [ onClick address <| Ok UnsetAddressingLine ] [ text "Return" ]
+  let returnButton = button [ onClick address <| UnsetAddressingLine ] [ text "Return" ]
       buttons = if isJust model.addressingLine
                 then
                   case model.unaddressedState of
                     Just True ->
                       if model.addressing == False
-                      then [ button [ onClick address <| Ok StartAddressing ] [ text "Start Addressing" ], returnButton ]
-                      else [ button [ onClick address <| Ok StopAddressing ] [ text "Stop Addressing" ] ]
+                      then [ button [ onClick address <| StartAddressing ] [ text "Start Addressing" ], returnButton ]
+                      else [ button [ onClick address <| StopAddressing ] [ text "Stop Addressing" ] ]
                     Just False ->
                       [ returnButton ]
                     Nothing ->
                       []
                 else
-                  List.map (\(line, name) -> button [onClick address <| Ok <| SetAddressingLine line] [ text <| "Address " ++ name ++ " (" ++ toString line ++ ")" ]) (activeLines model)
+                  List.map (\(line, name) -> button [onClick address <| SetAddressingLine line] [ text <| "Address " ++ name ++ " (" ++ toString line ++ ")" ]) (activeLines model)
       loadingWheel =
         if model.addressing
         || String.length model.mac == 0
@@ -236,59 +229,65 @@ query : Signal.Mailbox Encode.Value
 query =
   Signal.mailbox <| readGatewayQuery
 
-results : Signal.Mailbox (Result String Action)
+results : Signal.Mailbox (Action)
 results =
-  Signal.mailbox <| Err ""
+  Signal.mailbox <| NoOp
 
-actions : Signal.Mailbox (Result String Action)
+actions : Signal.Mailbox (Action)
 actions =
-  Signal.mailbox <| Ok NoOp
+  Signal.mailbox <| NoOp
 
 port requests : Signal (Task x ())
 port requests =
   Signal.map lookupGatewayMethod query.signal
-  |> Signal.map (\task -> taskMapReplace (Signal.send actions.address <| Ok EraseError) task `andThen` Task.toResult `andThen` Signal.send actions.address)
+  |> Signal.map
+    (\task -> taskMapReplace (Signal.send actions.address <| EraseError) task
+    `andThen` Task.toResult
+    `andThen` (resultToAction >> Signal.send actions.address))
 
 port addressingAssistant : Signal (Task x ())
 port addressingAssistant =
   Signal.map sendJsonBasedOnModel (Signal.dropRepeats (Signal.zip model actions.signal))
 
+resultToAction : Result String Action -> Action
+resultToAction result =
+  case result of
+    Ok action ->
+      action
+    Err e ->
+      DisplayError e
 
 taskMapReplace : Task x a -> b -> Task x b
 taskMapReplace task returnValue =
   Task.map (\_ -> returnValue) task
 
-sendJsonBasedOnModel : (Model, Result String Action) -> Task a ()
+sendJsonBasedOnModel : (Model, Action) -> Task a ()
 sendJsonBasedOnModel (model, action) =
   let
     sendQuery a = Signal.send query.address <| a model.addressingLine
   in
     case action of
-      Ok a ->
-        case a of
-          SetAddressingLine _ ->
-            sendQuery findUnaddressedQuery
-          AddDevice _ _ ->
-            if model.addressing == True
-            then sendQuery findUnaddressedQuery
-            else succeed ()
-          StartAddressing ->
-            sendQuery setUnaddressedQuery
-          UnaddressedState state ->
-            if state /= 0 && model.addressing == True
-            then sendQuery setUnaddressedQuery
-            else succeed ()
-          _ -> succeed ()
-      Err e ->
-        succeed ()
+      SetAddressingLine _ ->
+        sendQuery findUnaddressedQuery
+      AddDevice _ _ ->
+        if model.addressing == True
+        then sendQuery findUnaddressedQuery
+        else succeed ()
+      StartAddressing ->
+        sendQuery setUnaddressedQuery
+      UnaddressedState state ->
+        if state /= 0 && model.addressing == True
+        then sendQuery setUnaddressedQuery
+        else succeed ()
+      _ -> succeed ()
 
 lookupGatewayMethod : Encode.Value -> Task String Action
 lookupGatewayMethod json =
-  let encoded_json = Encode.encode 0 json
+  let encodedJson = Encode.encode 0 json
       toUrl =
-        if encoded_json == "null"
+        if encodedJson == "null"
           then fail "Null JSON is invalid"
-          else succeed <| "/cgi-bin/json.cgi?json=" ++ encoded_json
+          else succeed <| "/cgi-bin/json.cgi?json=" ++ encodedJson
   in
     toUrl `andThen` (Http.get gatewayResolve >> mapError (\x -> toString x))
 
