@@ -356,5 +356,5 @@ gatewayResolve =
     , Decode.object4 SetGatewayData (Decode.at ["result", "mac"] Decode.string) (Decode.at ["result", "hostname"] Decode.string) (Decode.at ["result", "activelines"] <| Decode.list Decode.int) (Decode.at ["result", "linenames"] <| Decode.list Decode.string)
     , Decode.object2 AddDevice (Decode.at ["result", "address"] Decode.int) (Decode.at ["result", "type"] <| Decode.list Decode.int)
     , Decode.object1 UnaddressedState (Decode.at ["result", "unaddressed"] Decode.int)
-    , Decode.object1 ((\a -> List.filter (not << flip List.member a) [0..63]) >> SetUnusedAddresses) (Decode.at ["result", "address"] <| Decode.list <| "number" := Decode.int)
+    , Decode.object1 ((\addresses -> List.filter (not << flip List.member addresses) [0..63]) >> SetUnusedAddresses) (Decode.at ["result", "address"] <| Decode.list <| "number" := Decode.int)
     ]
