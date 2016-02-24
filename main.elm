@@ -52,7 +52,13 @@ port title = "Addressing Sorceress"
 
 errorStringsForRetry : List String
 errorStringsForRetry =
-  ["The given address already has a device assigned to it"]
+  [ "The given address already has a device assigned to it"
+  ]
+
+errorStringForCompletion : String
+errorStringForCompletion =
+  "There are no unaddressed devices on the DALI line"
+
 
 genericLineQuery : String -> Int -> Encode.Value
 genericLineQuery method line =
@@ -102,17 +108,26 @@ update timeStamp action model =
       | error = ""
       }
     DisplayError e ->
-      if List.member e errorStringsForRetry
-      then
-        update
-          timeStamp
-          DropOneUnusedAddress
-          model
-      else
+      let errorModel =
         { model
         | error = e
-        , addressing = False
         }
+      in
+        if List.member e errorStringsForRetry
+        then
+          update
+            timeStamp
+            DropOneUnusedAddress
+            model
+        else
+          if e == errorStringForCompletion
+          then
+            update
+              timeStamp
+              StopAddressing
+              errorModel
+          else
+            errorModel
     DisplayHelpText e ->
       { model
       | helpText = e
@@ -159,10 +174,9 @@ update timeStamp action model =
       then
         update
           timeStamp
-          (DisplayError "There are no unaddressed devices on this line")
+          (DisplayError errorStringForCompletion)
           { model
           | unaddressedState = Just False
-          , addressingEnd = Just timeStamp
           }
       else
         { model
@@ -310,31 +324,26 @@ sendAddressingJsonBasedOnModel (model, action) =
           task
         Nothing ->
           succeed ()
-    setUnaddressedQuery' = flip setUnaddressedQuery <| List.head model.unusedAddresses
+    setUnaddressedQuery' =
+      flip setUnaddressedQuery <| List.head model.unusedAddresses
+    sendSetUnaddressedQuery =
+        if model.addressing == True
+        then sendQuery setUnaddressedQuery'
+        else succeed ()
   in
     case action of
       SetAddressingLine _ ->
         sendQuery findUnaddressedQuery
       AddDevice _ _ ->
-        if model.addressing == True
-        then sendQuery findUnaddressedQuery
-        else succeed ()
+        sendSetUnaddressedQuery
       StartAddressing ->
         sendQuery readLineQuery
       SetUnusedAddresses xs ->
-        if model.addressing == True
-        then sendQuery setUnaddressedQuery'
-        else succeed ()
-      UnaddressedState state ->
-        if state /= 0 && model.addressing == True
-        then sendQuery setUnaddressedQuery'
-        else succeed ()
+        sendSetUnaddressedQuery
       DisplayError e ->
         if List.member e errorStringsForRetry
         then
-          if model.addressing == True
-          then sendQuery setUnaddressedQuery'
-          else succeed ()
+          sendSetUnaddressedQuery
         else
           succeed ()
       _ -> succeed ()
