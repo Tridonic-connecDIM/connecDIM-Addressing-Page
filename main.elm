@@ -247,7 +247,7 @@ view address model =
           Nothing ->
             ""
       addressingTime =
-        Maybe.withDefault "" <| Maybe.map (Time.inSeconds >> toString >> \s -> "Addressed all devices in " ++ s ++ " seconds") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
+        Maybe.withDefault "" <| Maybe.map (Time.inMinutes >> toString >> \s -> "Addressed all devices in " ++ s ++ " minutes") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
   in
     div [textStyle] <|
       ([model.name
