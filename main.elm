@@ -3,12 +3,14 @@ import Html.Attributes as Attr exposing (..)
 import Html.Events exposing (..)
 import Http
 import Json.Encode as Encode exposing (..)
-import Json.Decode as Decode exposing ((:=))
+import Json.Decode as Decode exposing (Decoder, (:=))
 import String
 import Task exposing (..)
 import Graphics.Element exposing (show)
 import Maybe.Extra exposing (isJust, isNothing)
 import Signal.Extra as Signal
+import Dict exposing (Dict)
+import Time exposing (Time)
 
 type alias AddressedDevice =
   { address : Int
@@ -25,7 +27,10 @@ type alias Model =
   , addressing : Bool
   , unaddressedState : Maybe Bool
   , error : String
+  , helpText : String
   , unusedAddresses : List Int
+  , addressingStart : Maybe Time
+  , addressingEnd : Maybe Time
   }
 
 type Action = NoOp
@@ -33,23 +38,39 @@ type Action = NoOp
             | SetAddressingLine Int
             | EraseError
             | DisplayError String
+            | DisplayHelpText String
             | StartAddressing
             | StopAddressing
             | AddDevice Int (List Int)
             | SetGatewayData String String (List Int) (List String)
             | UnaddressedState Int
             | SetUnusedAddresses (List Int)
+            | DropOneUnusedAddress
 
 port title : String
 port title = "Addressing Sorceress"
 
-setUnaddressedQuery : Int -> Encode.Value
-setUnaddressedQuery line =
-  Encode.object [ ("method", Encode.string "setunaddressed"), ("params", Encode.list [Encode.int line]) ]
+addressInUseError : String
+addressInUseError =
+  "The given address already has a device assigned to it"
+
+genericLineQuery : String -> Int -> Encode.Value
+genericLineQuery method line =
+  Encode.object [ ("method", Encode.string method), ("params", Encode.list [Encode.int line]) ]
+
+setUnaddressedQuery : Int -> Maybe Int -> Encode.Value
+setUnaddressedQuery line address =
+  case address of
+    Just a ->
+      Encode.object [ ("method", Encode.string "setunaddressed"), ("params", Encode.list [Encode.int line, Encode.int a]) ]
+    Nothing ->
+      genericLineQuery "setunaddressed" line
 
 findUnaddressedQuery : Int -> Encode.Value
-findUnaddressedQuery line =
-  Encode.object [ ("method", Encode.string "findunaddressed"), ("params", Encode.list [Encode.int line]) ]
+findUnaddressedQuery = genericLineQuery "findunaddressed"
+
+readLineQuery : Int -> Encode.Value
+readLineQuery = genericLineQuery "readline"
 
 readGatewayQuery : Encode.Value
 readGatewayQuery = Encode.object [ ("method", Encode.string "readgateway"), ("params", Encode.list []) ]
@@ -57,8 +78,8 @@ readGatewayQuery = Encode.object [ ("method", Encode.string "readgateway"), ("pa
 main =
   Signal.map (view actions.address) model
 
-update : Action -> Model -> Model
-update action model =
+update : Time -> Action -> Model -> Model
+update timeStamp action model =
   case action of
     NoOp ->
       model
@@ -69,6 +90,8 @@ update action model =
       , unusedAddresses = []
       , addressedDevices = []
       , error = ""
+      , addressingStart = Nothing
+      , addressingEnd = Nothing
       }
     SetAddressingLine line ->
       { model
@@ -79,12 +102,25 @@ update action model =
       | error = ""
       }
     DisplayError e ->
+      if e == addressInUseError
+      then
+        update
+          timeStamp
+          DropOneUnusedAddress
+          model
+      else
+        { model
+        | error = e
+        , addressing = False
+        }
+    DisplayHelpText e ->
       { model
-      | error = e
+      | helpText = e
       }
     StartAddressing ->
       { model
       | addressing = True
+      , addressingStart = Just timeStamp
       }
     StopAddressing ->
       { model
@@ -94,13 +130,19 @@ update action model =
       { model
       | unusedAddresses = addresses
       }
+    DropOneUnusedAddress ->
+      { model
+      | unusedAddresses = List.drop 1 model.unusedAddresses
+      }
     AddDevice a t ->
       if model.addressing
       then
-        { model
-        | addressedDevices = model.addressedDevices ++ [{address = a, types = t}]
-        , unusedAddresses = List.drop 1 model.unusedAddresses
-        }
+        update
+          timeStamp
+          DropOneUnusedAddress
+          { model
+          | addressedDevices = model.addressedDevices ++ [{address = a, types = t}]
+          }
       else
         model
     SetGatewayData macAddr hostname activeLines lineNames'  ->
@@ -113,10 +155,13 @@ update action model =
     UnaddressedState state ->
       if state == 0
       then
-        { model
-        | unaddressedState = Just False
-        , error = "There are no unaddressed devices"
-        , addressing = False}
+        update
+          timeStamp
+          (DisplayError "There are no unaddressed devices")
+          { model
+          | unaddressedState = Just False
+          , addressingEnd = Just timeStamp
+          }
       else
         { model
         | unaddressedState = Just True
@@ -125,7 +170,7 @@ update action model =
 -- The application's state
 model : Signal Model
 model =
-  Signal.foldp update { mac = ""
+  Signal.foldp (uncurry update) { mac = ""
                       , name = ""
                       , addressingLine = Nothing
                       , lines = []
@@ -134,8 +179,11 @@ model =
                       , addressing = False
                       , unaddressedState = Nothing
                       , error = ""
+                      , helpText = ""
                       , unusedAddresses = []
-                      } actions.signal
+                      , addressingStart = Nothing
+                      , addressingEnd = Nothing
+                      } <| Time.timestamp actions.signal
 
 -- Pair the line names with line numbers and filter out the inactive lines
 activeLines : Model -> List (Int, String)
@@ -170,14 +218,14 @@ devicesToDivList =
 
 view : Signal.Address (Action) -> Model -> Html
 view address model =
-  let returnButton = button [ onClick address <| UnsetAddressingLine ] [ text "Return" ]
+  let returnButton = button [ onClick address UnsetAddressingLine ] [ text "Return" ]
       buttons = if isJust model.addressingLine
                 then
                   case model.unaddressedState of
                     Just True ->
                       if model.addressing == False
-                      then [ button [ onClick address <| StartAddressing ] [ text "Start Addressing" ], returnButton ]
-                      else [ button [ onClick address <| StopAddressing ] [ text "Stop Addressing" ] ]
+                      then [ button [ onClick address StartAddressing ] [ text "Start Addressing" ], returnButton ]
+                      else [ button [ onClick address StopAddressing ] [ text "Stop Addressing" ] ]
                     Just False ->
                       [ returnButton ]
                     Nothing ->
@@ -192,24 +240,29 @@ view address model =
           [ img [ src "/img/loading.gif", width 20, height 20] [] ]
         else
           []
-      lineName = case model.addressingLine of
-        Just a ->
-          "Line " ++ toString a
-        Nothing ->
-          ""
+      lineName =
+        case model.addressingLine of
+          Just a ->
+            "Line " ++ toString a
+          Nothing ->
+            ""
+      addressingTime =
+        Maybe.withDefault "" <| Maybe.map (Time.inSeconds >> toString >> \s -> "Addressed all devices in " ++ s ++ " seconds") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
   in
-    div [myStyle] <|
-      [ div [] [ text model.name ]
-      , div [] [ text model.mac ]
-      , div [] [ text <| lineName]
-      , div [] [ text model.error ]
-      ]
-      ++ List.map (\item -> div [] [item]) (buttons ++ devicesToDivList model.addressedDevices ++ loadingWheel)
+    div [textStyle] <|
+      ([model.name
+      , model.mac
+      , lineName
+      , model.error
+      , addressingTime
+      ] |> List.map (\item -> div [] [ text item ]))
+      ++ List.map (\item -> div [ style [ ("color", "#118BD8") ] ] [ item ]) (buttons ++ devicesToDivList model.addressedDevices ++ loadingWheel)
+      ++ [ div [ style [ ("color", "#74C3DB") ] ] [ text model.helpText ] ]
 
-myStyle : Attribute
-myStyle =
+textStyle : Attribute
+textStyle =
   style
-    [ ("width", "100%")
+    [ ("color", "#073D8B")
     , ("font-size", "2em")
     , ("text-align", "center")
     ]
@@ -230,7 +283,7 @@ port requests : Signal (Task x ())
 port requests =
   Signal.map lookupGatewayMethod query.signal
   |> Signal.map
-    (\task -> Task.map (\_ -> task) (Signal.send actions.address <| EraseError)
+    (\task -> Task.map (\_ -> task) (Signal.send actions.address EraseError)
     `andThen` Task.toResult
     `andThen` ((\result ->
                 case result of
@@ -239,11 +292,11 @@ port requests =
                   Err e ->
                     DisplayError e) >> Signal.send actions.address))
 
-port addressingAssistant : Signal (Task x ())
+port addressingAssistant : Signal (Task String ())
 port addressingAssistant =
   Signal.map sendAddressingJsonBasedOnModel (Signal.dropRepeats (Signal.zip model actions.signal))
 
-sendAddressingJsonBasedOnModel : (Model, Action) -> Task a ()
+sendAddressingJsonBasedOnModel : (Model, Action) -> Task String ()
 sendAddressingJsonBasedOnModel (model, action) =
   let
     sendQuery a =
@@ -252,20 +305,31 @@ sendAddressingJsonBasedOnModel (model, action) =
           task
         Nothing ->
           succeed ()
+    setUnaddressedQuery' = flip setUnaddressedQuery <| List.head model.unusedAddresses
   in
     case action of
       SetAddressingLine _ ->
-        sendQuery findUnaddressedQuery
+        sendQuery readLineQuery
+        `andThen`
+        (always <| sendQuery findUnaddressedQuery)
       AddDevice _ _ ->
         if model.addressing == True
         then sendQuery findUnaddressedQuery
         else succeed ()
       StartAddressing ->
-        sendQuery setUnaddressedQuery
+        sendQuery setUnaddressedQuery'
       UnaddressedState state ->
         if state /= 0 && model.addressing == True
-        then sendQuery setUnaddressedQuery
+        then sendQuery setUnaddressedQuery'
         else succeed ()
+      DisplayError e ->
+        if e == addressInUseError
+        then
+          if model.addressing == True
+          then sendQuery setUnaddressedQuery'
+          else succeed ()
+        else
+          succeed ()
       _ -> succeed ()
 
 lookupGatewayMethod : Encode.Value -> Task String Action
@@ -278,13 +342,12 @@ lookupGatewayMethod json =
   in
     toUrl `andThen` (Http.get gatewayResolve >> mapError (\x -> toString x))
 
--- lineToUnusedAddresses :
-
-gatewayResolve : Decode.Decoder Action
+gatewayResolve : Decoder Action
 gatewayResolve =
   Decode.oneOf
     [ Decode.object1 DisplayError (Decode.at ["error", "message"] Decode.string)
     , Decode.object4 SetGatewayData (Decode.at ["result", "mac"] Decode.string) (Decode.at ["result", "hostname"] Decode.string) (Decode.at ["result", "activelines"] <| Decode.list Decode.int) (Decode.at ["result", "linenames"] <| Decode.list Decode.string)
     , Decode.object2 AddDevice (Decode.at ["result", "address"] Decode.int) (Decode.at ["result", "type"] <| Decode.list Decode.int)
     , Decode.object1 UnaddressedState (Decode.at ["result", "unaddressed"] Decode.int)
+    , Decode.object1 ((\a -> List.filter (not << flip List.member a) [0..63]) >> SetUnusedAddresses) (Decode.at ["result", "address"] <| Decode.list <| "number" := Decode.int)
     ]
