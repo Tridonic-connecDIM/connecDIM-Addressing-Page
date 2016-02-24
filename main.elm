@@ -121,10 +121,12 @@ update timeStamp action model =
       { model
       | addressing = True
       , addressingStart = Just timeStamp
+      , addressingEnd = Nothing
       }
     StopAddressing ->
       { model
       | addressing = False
+      , addressingEnd = Just timeStamp
       }
     SetUnusedAddresses addresses ->
       { model
@@ -157,7 +159,7 @@ update timeStamp action model =
       then
         update
           timeStamp
-          (DisplayError "There are no unaddressed devices")
+          (DisplayError "There are no unaddressed devices on this line")
           { model
           | unaddressedState = Just False
           , addressingEnd = Just timeStamp
@@ -247,17 +249,20 @@ view address model =
           Nothing ->
             ""
       addressingTime =
-        Maybe.withDefault "" <| Maybe.map (Time.inMinutes >> toString >> \s -> "Addressed all devices in " ++ s ++ " minutes") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
+        Maybe.withDefault "" <| Maybe.map (Time.inSeconds >> round >> (\s -> (toFloat s / 60 * 10 |> truncate |> toFloat) / 10) >> toString >> \s -> "The last addressing session took " ++ s ++ " minutes") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
   in
     div [textStyle] <|
       ([model.name
       , model.mac
-      , lineName
-      , model.error
-      , addressingTime
-      ] |> List.map (\item -> div [] [ text item ]))
-      ++ List.map (\item -> div [ style [ ("color", "#118BD8") ] ] [ item ]) (buttons ++ devicesToDivList model.addressedDevices ++ loadingWheel)
-      ++ [ div [ style [ ("color", "#74C3DB") ] ] [ text model.helpText ] ]
+      , lineName ] |> List.map (\item -> div [] [ text item ]))
+      ++
+      [ div [ style [ ("color", "red") ] ] [ text model.error ]
+      , div [] [ text addressingTime ]
+      ]
+      ++
+      List.map (\item -> div [ style [ ("color", "#118BD8") ] ] [ item ]) (buttons ++ devicesToDivList model.addressedDevices ++ loadingWheel)
+      ++
+      [ div [ style [ ("color", "#74C3DB") ] ] [ text model.helpText ] ]
 
 textStyle : Attribute
 textStyle =
@@ -309,15 +314,17 @@ sendAddressingJsonBasedOnModel (model, action) =
   in
     case action of
       SetAddressingLine _ ->
-        sendQuery readLineQuery
-        `andThen`
-        (always <| sendQuery findUnaddressedQuery)
+        sendQuery findUnaddressedQuery
       AddDevice _ _ ->
         if model.addressing == True
         then sendQuery findUnaddressedQuery
         else succeed ()
       StartAddressing ->
-        sendQuery setUnaddressedQuery'
+        sendQuery readLineQuery
+      SetUnusedAddresses xs ->
+        if model.addressing == True
+        then sendQuery setUnaddressedQuery'
+        else succeed ()
       UnaddressedState state ->
         if state /= 0 && model.addressing == True
         then sendQuery setUnaddressedQuery'
