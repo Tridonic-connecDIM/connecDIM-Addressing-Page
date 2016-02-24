@@ -50,9 +50,9 @@ type Action = NoOp
 port title : String
 port title = "Addressing Sorceress"
 
-addressInUseError : String
-addressInUseError =
-  "The given address already has a device assigned to it"
+errorStringsForRetry : List String
+errorStringsForRetry =
+  ["The given address already has a device assigned to it"]
 
 genericLineQuery : String -> Int -> Encode.Value
 genericLineQuery method line =
@@ -256,8 +256,8 @@ view address model =
       , model.mac
       , lineName ] |> List.map (\item -> div [] [ text item ]))
       ++
-      [ div [ style [ ("color", "red") ] ] [ text model.error ]
-      , div [] [ text addressingTime ]
+      [ div [] [ text addressingTime ]
+      , div [ style [ ("color", "red") ] ] [ text model.error ]
       ]
       ++
       List.map (\item -> div [ style [ ("color", "#118BD8") ] ] [ item ]) (buttons ++ devicesToDivList model.addressedDevices ++ loadingWheel)
