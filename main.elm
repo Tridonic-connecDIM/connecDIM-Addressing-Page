@@ -102,7 +102,7 @@ update timeStamp action model =
       | error = ""
       }
     DisplayError e ->
-      if e == addressInUseError
+      if List.member e errorStringsForRetry
       then
         update
           timeStamp
@@ -330,7 +330,7 @@ sendAddressingJsonBasedOnModel (model, action) =
         then sendQuery setUnaddressedQuery'
         else succeed ()
       DisplayError e ->
-        if e == addressInUseError
+        if List.member e errorStringsForRetry
         then
           if model.addressing == True
           then sendQuery setUnaddressedQuery'
