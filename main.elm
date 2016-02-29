@@ -262,8 +262,11 @@ view address model =
             "Line " ++ toString a
           Nothing ->
             ""
+      mintuesToOneDecimalPlaceString =
+        toString << \s -> (toFloat s / 60 * 10 |> truncate |> toFloat) / 10
       addressingTime =
-        Maybe.withDefault "" <| Maybe.map (Time.inSeconds >> round >> (\s -> (toFloat s / 60 * 10 |> truncate |> toFloat) / 10) >> toString >> \s -> "The last addressing session took " ++ s ++ " minutes") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
+        Maybe.withDefault ""
+        <| Maybe.map (Time.inSeconds >> round >> mintuesToOneDecimalPlaceString >> \s -> "The last addressing session took " ++ s ++ " minutes") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
   in
     div [textStyle] <|
       ([model.name
