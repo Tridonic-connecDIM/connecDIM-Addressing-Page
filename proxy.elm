@@ -5,7 +5,7 @@ import Json.Encode as Encode
 import Json.Decode as Decode exposing (Decoder, (:=))
 import String
 import Task exposing (..)
-import Graphics.Element exposing (show)
+import Graphics.Element exposing (Element, show)
 import Maybe.Extra exposing (isJust, isNothing)
 import Signal.Extra as Signal
 import Dict exposing (Dict)
@@ -79,11 +79,9 @@ model =
                       , windowSize = (0,0)
                       } <| Time.timestamp actions.signal
 
-view : Signal.Address (Action) -> Model -> Html
+view : Signal.Address (Action) -> Model -> Element
 view address model =
-  div []
-    [ Tridonic.pageHeader model.windowSize "Proxy Settings"
-    ]
+  Tridonic.pageHeader model.windowSize "Main"
 
 query : Signal.Mailbox Encode.Value
 query =

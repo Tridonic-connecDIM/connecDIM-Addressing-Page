@@ -20,7 +20,7 @@ linksExcluding linkName =
     (\(name, linkLocation) -> name /= linkName)
     links
 
-pageHeader : (Int, Int) -> String -> Html
+pageHeader : (Int, Int) -> String -> Element
 pageHeader (windowWidth, windowHeight) excludeLinkName =
   let
     logoHeight = 48
@@ -49,6 +49,4 @@ pageHeader (windowWidth, windowHeight) excludeLinkName =
         |> toForm
       ]
   in
-    div []
-      [ fromElement <| container windowWidth bannerHeight midTop collagedElements
-      ]
+    container windowWidth bannerHeight midTop collagedElements

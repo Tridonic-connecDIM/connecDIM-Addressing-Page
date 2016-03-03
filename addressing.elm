@@ -249,7 +249,7 @@ view address model =
         <| Maybe.map (Time.inSeconds >> round >> mintuesToOneDecimalPlaceString >> \s -> "The last addressing session took " ++ s ++ " minutes") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
   in
     div []
-      [ Tridonic.pageHeader model.windowSize "Addressing"
+      [ div [] [ fromElement <| Tridonic.pageHeader model.windowSize "Addressing" ]
       , div [textStyle] <|
         ([model.name
         , model.mac
