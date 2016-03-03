@@ -1,5 +1,6 @@
 module Gateway
   ( echoJson
+  , activeLines
   , setUnaddressedQuery
   , findUnaddressedQuery
   , readLineQuery
@@ -15,6 +16,14 @@ import Task exposing (Task)
 echoJson : Encode.Value -> Encode.Value
 echoJson value =
   Encode.object [ ("method", Encode.string "echo"), ("params", Encode.list [ value ]) ]
+
+-- Pair the line names with line numbers and filter out the inactive lines
+activeLines : List Int -> List String -> List (Int, String)
+activeLines lines lineNames =
+  List.indexedMap
+    (\index name -> (index + 1, name)) lineNames
+  |> List.filter
+    (\(line, _) -> List.member line lines)
 
 queryGatewayWithMethod : Encode.Value -> Decoder a -> Task String a
 queryGatewayWithMethod json decoder =

@@ -188,14 +188,6 @@ model =
                       , windowSize = (0,0)
                       } <| Time.timestamp actions.signal
 
--- Pair the line names with line numbers and filter out the inactive lines
-activeLines : Model -> List (Int, String)
-activeLines model =
-  List.indexedMap
-    (\index name -> (index + 1, name)) model.lineNames
-  |> List.filter
-    (\(line, _) -> List.member line model.lines)
-
 deviceTypeToImageName : Int -> String
 deviceTypeToImageName deviceType =
   case deviceType of
@@ -234,7 +226,8 @@ view address model =
                     Nothing ->
                       []
                 else
-                  List.map (\(line, name) -> button [onClick address <| SetAddressingLine line] [ text <| "Address " ++ name ++ " (" ++ toString line ++ ")" ]) (activeLines model)
+                  Gateway.activeLines model.lines model.lineNames
+                  |> List.map (\(line, name) -> button [onClick address <| SetAddressingLine line] [ text <| "Address " ++ name ++ " (" ++ toString line ++ ")" ])
       loadingWheel =
         if model.addressing
         || String.length model.mac == 0
