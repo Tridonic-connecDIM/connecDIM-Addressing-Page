@@ -5,7 +5,8 @@ import Json.Encode as Encode
 import Json.Decode as Decode exposing (Decoder, (:=))
 import String
 import Task exposing (..)
-import Graphics.Element exposing (Element, show)
+import Graphics.Element exposing (..)
+import Graphics.Collage exposing (..)
 import Maybe.Extra exposing (isJust, isNothing)
 import Signal.Extra as Signal
 import Dict exposing (Dict)
@@ -13,6 +14,7 @@ import Time exposing (Time)
 import Window
 import Gateway
 import Tridonic
+import Color
 
 type alias Model =
   { mac : String
@@ -31,12 +33,12 @@ type Action = NoOp
             | SetGatewayData String String (List Int) (List String)
             | UpdateWindowSize (Int, Int)
 
--- port title : Signal String
--- port title =
---   Signal.map toString Window.dimensions
+port title : String
+port title =
+  "Main"
 
 main =
-  Signal.map (view actions.address) model
+  Signal.map view model
 
 update : Time -> Action -> Model -> Model
 update timeStamp action model =
@@ -79,17 +81,26 @@ model =
                       , windowSize = (0,0)
                       } <| Time.timestamp actions.signal
 
-view : Signal.Address (Action) -> Model -> Element
-view address model =
-  Tridonic.pageHeader model.windowSize "Main"
+view : Model -> Element
+view model =
+  let windowWidth = fst model.windowSize
+      windowHeight = snd model.windowSize
+      pageHeader = Tridonic.pageHeader model.windowSize "Main"
+      centeredContainer = flip (container windowWidth) middle
+  in
+    [ pageHeader
+      |> centeredContainer (heightOf pageHeader)
+    , show model.lineNames
+      |> centeredContainer (heightOf <| show model.lineNames)
+    ] |> flow down
 
 query : Signal.Mailbox Encode.Value
 query =
-  Signal.mailbox <| Gateway.readGatewayQuery
+  Signal.mailbox Gateway.readGatewayQuery
 
 actions : Signal.Mailbox Action
 actions =
-  Signal.mailbox <| NoOp
+  Signal.mailbox NoOp
 
 port windowSizeUpdate : Signal (Task x ())
 port windowSizeUpdate =

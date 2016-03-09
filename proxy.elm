@@ -5,7 +5,8 @@ import Json.Encode as Encode
 import Json.Decode as Decode exposing (Decoder, (:=))
 import String
 import Task exposing (..)
-import Graphics.Element exposing (Element, show)
+import Graphics.Element exposing (..)
+import Graphics.Input.Field exposing (..)
 import Maybe.Extra exposing (isJust, isNothing)
 import Signal.Extra as Signal
 import Dict exposing (Dict)
@@ -31,15 +32,15 @@ type Action = NoOp
             | SetGatewayData String String (List Int) (List String)
             | UpdateWindowSize (Int, Int)
 
--- port title : Signal String
--- port title =
---   Signal.map toString Window.dimensions
+port title : String
+port title =
+  "Proxy Settings"
 
 main =
-  Signal.map (view actions.address) model
+  Signal.map2 view model nameField
 
-update : Time -> Action -> Model -> Model
-update timeStamp action model =
+update : Action -> Model -> Model
+update action model =
   case action of
     NoOp ->
       model
@@ -70,31 +71,47 @@ update timeStamp action model =
 -- The application's state
 model : Signal Model
 model =
-  Signal.foldp (uncurry update) { mac = ""
+  Signal.foldp update { mac = ""
                       , name = ""
                       , lines = []
                       , lineNames = []
                       , error = ""
                       , helpText = ""
                       , windowSize = (0,0)
-                      } <| Time.timestamp actions.signal
+                      }
+                      actions.signal
 
-view : Signal.Address (Action) -> Model -> Element
-view address model =
-  Tridonic.pageHeader model.windowSize "Main"
+view : Model -> Element -> Element
+view model textField =
+  let windowWidth = fst model.windowSize
+      windowHeight = snd model.windowSize
+      pageHeader = Tridonic.pageHeader model.windowSize "Proxy Settings"
+      centeredContainer = \value -> container windowWidth (heightOf value) middle value
+  in
+    [ pageHeader
+      |> centeredContainer
+    , show model.lineNames
+      |> centeredContainer
+    , textField
+      |> centeredContainer
+    ] |> flow down
 
 query : Signal.Mailbox Encode.Value
-query =
-  Signal.mailbox <| Gateway.readGatewayQuery
+query = Signal.mailbox <| Gateway.readGatewayQuery
 
 actions : Signal.Mailbox Action
-actions =
-  Signal.mailbox <| NoOp
+actions = Signal.mailbox <| NoOp
 
 port windowSizeUpdate : Signal (Task x ())
 port windowSizeUpdate =
   Signal.map UpdateWindowSize Window.dimensions
   |> Signal.map (Signal.send actions.address)
+
+name : Signal.Mailbox Content
+name = Signal.mailbox noContent
+
+nameField : Signal Element
+nameField = Signal.map (field defaultStyle (Signal.message name.address) "Name") name.signal
 
 port requests : Signal (Task x ())
 port requests =

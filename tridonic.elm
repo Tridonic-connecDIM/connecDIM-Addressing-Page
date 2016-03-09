@@ -28,25 +28,34 @@ pageHeader (windowWidth, windowHeight) excludeLinkName =
     headerBarHeight = 10
     bannerHeight =
       logoHeight + headerBarHeight
+    preliminaryBannerWidth =
+      round ((toFloat windowWidth) * 0.6)
+    minBannerWidth =
+      980
+    bannerWidth =
+      if preliminaryBannerWidth < minBannerWidth
+      then minBannerWidth
+      else preliminaryBannerWidth
     hyperLinks =
       linksExcluding excludeLinkName
-      |> List.map (\(name, linkLocation) -> link linkLocation (leftAligned <| Text.color (rgb 116 195 219) <| Text.fromString name))
-      |> List.intersperse (spacer 10 10)
+      |> List.map (\(name, linkLocation) -> link linkLocation (leftAligned <| Text.height 20 <| Text.color (rgb 116 195 219) <| Text.fromString name))
+      |> List.intersperse (spacer 20 20)
       |> flow right
-    bannerWidth = round ((toFloat windowWidth) * 0.6)
-    bannerContainer = container bannerWidth bannerHeight
-    collagedElements = collage bannerWidth bannerHeight
-      [ rect (toFloat bannerWidth) (toFloat bannerHeight)
-        |> filled (rgb 0 43 93)
-      , image logoWidth logoHeight "/img/tridonic_logo.png"
-        |> bannerContainer topLeft
-        |> toForm
-      , tiledImage bannerWidth headerBarHeight "/img/header_hor_bar.png"
-        |> bannerContainer midBottom
-        |> toForm
-      , hyperLinks
-        |> bannerContainer (bottomLeftAt (absolute (logoWidth + 10)) (absolute 10))
-        |> toForm
-      ]
+    bannerContainer =
+      container bannerWidth bannerHeight
+    collagedElements =
+      collage bannerWidth bannerHeight
+        [ rect (toFloat bannerWidth) (toFloat bannerHeight)
+          |> filled (rgb 0 43 93)
+        , image logoWidth logoHeight "/img/tridonic_logo.png"
+          |> bannerContainer topLeft
+          |> toForm
+        , tiledImage bannerWidth headerBarHeight "/img/header_hor_bar.png"
+          |> bannerContainer midBottom
+          |> toForm
+        , hyperLinks
+          |> bannerContainer (bottomLeftAt (absolute (logoWidth + 10)) (absolute 10))
+          |> toForm
+        ]
   in
     container windowWidth bannerHeight midTop collagedElements
