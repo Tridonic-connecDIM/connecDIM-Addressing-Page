@@ -1,5 +1,6 @@
 {
     "laszlopandy/elm-console": "1.1.0",
+    "circuithub/elm-result-extra": "1.4.0",
     "circuithub/elm-maybe-extra": "1.6.0",
     "Apanatshka/elm-signal-extra": "5.7.0",
     "evancz/virtual-dom": "2.1.0",

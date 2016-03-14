@@ -3,6 +3,7 @@ module Gateway
   , activeLines
   , setUnaddressedQuery
   , findUnaddressedQuery
+  , findAllUnaddressedQuery
   , readLineQuery
   , readGatewayQuery
   , queryGatewayWithMethod
@@ -12,6 +13,7 @@ import Json.Encode as Encode
 import Json.Decode as Decode exposing (Decoder)
 import Http
 import Task exposing (Task)
+import Maybe
 
 echoJson : Encode.Value -> Encode.Value
 echoJson value =
@@ -39,16 +41,19 @@ genericLineQuery : String -> Int -> Encode.Value
 genericLineQuery method line =
   Encode.object [ ("method", Encode.string method), ("params", Encode.list [Encode.int line]) ]
 
-setUnaddressedQuery : Int -> Maybe Int -> Encode.Value
-setUnaddressedQuery line address =
-  case address of
-    Just a ->
-      Encode.object [ ("method", Encode.string "setunaddressed"), ("params", Encode.list [Encode.int line, Encode.int a]) ]
-    Nothing ->
-      genericLineQuery "setunaddressed" line
+setUnaddressedQuery : Int -> Maybe Int -> Maybe Int -> Encode.Value
+setUnaddressedQuery line address edaliClass =
+  Maybe.oneOf
+    [ Maybe.map2 (\address edaliClass -> Encode.object [ ("method", Encode.string "edalisetunaddressed"), ("params", Encode.list [ Encode.int line, Encode.int edaliClass, Encode.int address ]) ]) address edaliClass
+    , Maybe.map (\address -> Encode.object [ ("method", Encode.string "setunaddressed"), ("params", Encode.list [ Encode.int line, Encode.int address ]) ]) address
+    , Maybe.map (\edaliClass -> Encode.object [ ("method", Encode.string "edalisetunaddressed"), ("params", Encode.list [ Encode.int line, Encode.int edaliClass ]) ]) edaliClass
+    ] |> Maybe.withDefault (genericLineQuery "setunaddressed" line)
 
 findUnaddressedQuery : Int -> Encode.Value
 findUnaddressedQuery = genericLineQuery "findunaddressed"
+
+findAllUnaddressedQuery : Int -> Encode.Value
+findAllUnaddressedQuery = genericLineQuery "findallunaddressed"
 
 readLineQuery : Int -> Encode.Value
 readLineQuery = genericLineQuery "readline"
