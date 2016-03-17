@@ -12,26 +12,12 @@ import Signal.Extra as Signal
 import Dict exposing (Dict)
 import Time exposing (Time)
 import Window
-import Gateway
+import Gateway exposing (Action(..))
 import Tridonic
 import Color
+import Result.Extra as Result
 
-type alias Model =
-  { mac : String
-  , name : String
-  , lines : List Int
-  , lineNames : List String
-  , error : String
-  , helpText : String
-  , windowSize : (Int, Int)
-  }
-
-type Action = NoOp
-            | EraseError
-            | DisplayError String
-            | DisplayHelpText String
-            | SetGatewayData String String (List Int) (List String)
-            | UpdateWindowSize (Int, Int)
+type alias Model = Gateway.GatewayModel {}
 
 port title : String
 port title =
@@ -46,40 +32,41 @@ update timeStamp action model =
     NoOp ->
       model
     EraseError ->
-      { model
-      | error = ""
+      { model | error = ""
       }
     DisplayError e ->
-      { model
-      | error = e
+      { model | error = e
       }
     DisplayHelpText e ->
-      { model
-      | helpText = e
+      { model | helpText = e
       }
     SetGatewayData macAddr hostname activeLines lineNames'  ->
-      { model
-      | mac = macAddr
-      , name = hostname
-      , lines = activeLines
-      , lineNames = lineNames'
+      { model | mac = macAddr,
+                name = hostname,
+                lines = activeLines,
+                lineNames = lineNames'
       }
     UpdateWindowSize size ->
-      { model
-      | windowSize = size
+      { model | windowSize = size
       }
+    _ -> model
+
+initialModel : Model
+initialModel =
+  { mac = ""
+  , name = ""
+  , lines = []
+  , lineNames = []
+  , error = ""
+  , helpText = ""
+  , windowSize = (0,0)
+  }
 
 -- The application's state
 model : Signal Model
 model =
-  Signal.foldp (uncurry update) { mac = ""
-                      , name = ""
-                      , lines = []
-                      , lineNames = []
-                      , error = ""
-                      , helpText = ""
-                      , windowSize = (0,0)
-                      } <| Time.timestamp actions.signal
+  Time.timestamp actions.signal
+  |> Signal.foldp (uncurry update) initialModel
 
 view : Model -> Element
 view model =
@@ -102,26 +89,17 @@ actions : Signal.Mailbox Action
 actions =
   Signal.mailbox NoOp
 
-port windowSizeUpdate : Signal (Task x ())
+port windowSizeUpdate : Signal (Task never ())
 port windowSizeUpdate =
   Signal.map UpdateWindowSize Window.dimensions
   |> Signal.map (Signal.send actions.address)
 
 port requests : Signal (Task x ())
 port requests =
-  Signal.map2 Gateway.queryGatewayWithMethod query.signal (Signal.constant gatewayResolve)
-  |> Signal.map
-    (\task -> Task.map (\_ -> task) (Signal.send actions.address EraseError)
-    `andThen` Task.toResult
-    `andThen` ((\result ->
-                case result of
-                  Ok action ->
-                    action
-                  Err e ->
-                    DisplayError e) >> Signal.send actions.address))
+  Gateway.sendGatewayRequest query.signal gatewayDecoder actions.address
 
-gatewayResolve : Decoder Action
-gatewayResolve =
+gatewayDecoder : Decoder Action
+gatewayDecoder =
   Decode.oneOf
     [ Decode.object1 DisplayError (Decode.at ["error", "message"] Decode.string)
     , Decode.object4 SetGatewayData (Decode.at ["result", "mac"] Decode.string) (Decode.at ["result", "hostname"] Decode.string) (Decode.at ["result", "activelines"] <| Decode.list Decode.int) (Decode.at ["result", "linenames"] <| Decode.list Decode.string)

@@ -13,7 +13,7 @@ import Time exposing (Time)
 import Result.Extra as Result
 import Maybe
 import Window
-import Gateway
+import Gateway exposing (Action(..))
 import Tridonic
 
 type alias AddressedDevice =
@@ -23,39 +23,16 @@ type alias AddressedDevice =
   }
 
 type alias Model =
-  { mac : String
-  , name : String
-  , addressingLine : Maybe Int
-  , lines : List Int
-  , lineNames : List String
+  Gateway.GatewayModel
+  { addressingLine : Maybe Int
   , addressedDevices : List AddressedDevice
   , addressing : Bool
   , unaddressedState : Maybe Bool
   , edaliClass : Maybe Int
-  , error : String
-  , helpText : String
   , unusedAddresses : List Int
   , addressingStart : Maybe Time
   , addressingEnd : Maybe Time
-  , windowSize : (Int, Int)
   }
-
-type Action = NoOp
-            | UnsetAddressingLine
-            | SetAddressingLine Int
-            | SetEdaliClass (Maybe Int)
-            | EraseError
-            | DisplayError String
-            | DisplayHelpText String
-            | StartAddressing
-            | StopAddressing
-            | AddDevice Int (List Int)
-            | AddEdaliDevice Int
-            | SetGatewayData String String (List Int) (List String)
-            | UnaddressedState Int
-            | SetUnusedAddresses (List Int)
-            | DropOneUnusedAddress
-            | UpdateWindowSize (Int, Int)
 
 port title : String
 port title = "Addressing Sorceress"
@@ -82,32 +59,27 @@ update timeStamp action model =
     NoOp ->
       model
     UnsetAddressingLine ->
-      { model
-      | addressingLine = Nothing
-      , unaddressedState = Nothing
-      , unusedAddresses = []
-      , addressedDevices = []
-      , error = ""
-      , addressingStart = Nothing
-      , addressingEnd = Nothing
-      , edaliClass = Just 3
+      { model | addressingLine = Nothing,
+                unaddressedState = Nothing,
+                unusedAddresses = [],
+                addressedDevices = [],
+                error = "",
+                addressingStart = Nothing,
+                addressingEnd = Nothing,
+                edaliClass = Just 3
       }
     SetAddressingLine line ->
-      { model
-      | addressingLine = Just line
+      { model | addressingLine = Just line
       }
     SetEdaliClass class ->
-      { model
-      | edaliClass = class
+      { model | edaliClass = class
       }
     EraseError ->
-      { model
-      | error = ""
+      { model | error = ""
       }
     DisplayError e ->
       let errorModel =
-            { model
-            | error = e
+            { model | error = e
             }
       in
         if List.member e errorStringsForRetry
@@ -122,27 +94,22 @@ update timeStamp action model =
         else
           errorModel
     DisplayHelpText e ->
-      { model
-      | helpText = e
+      { model | helpText = e
       }
     StartAddressing ->
-      { model
-      | addressing = True
-      , addressingStart = Just timeStamp
-      , addressingEnd = Nothing
+      { model | addressing = True,
+                addressingStart = Just timeStamp,
+                addressingEnd = Nothing
       }
     StopAddressing ->
-      { model
-      | addressing = False
-      , addressingEnd = Just timeStamp
+      { model | addressing = False,
+                addressingEnd = Just timeStamp
       }
     SetUnusedAddresses addresses ->
-      { model
-      | unusedAddresses = addresses
+      { model | unusedAddresses = addresses
       }
     DropOneUnusedAddress ->
-      { model
-      | unusedAddresses = List.drop 1 model.unusedAddresses
+      { model | unusedAddresses = List.drop 1 model.unusedAddresses
       }
     AddDevice a t ->
       if model.addressing
@@ -150,25 +117,22 @@ update timeStamp action model =
         update
           timeStamp
           DropOneUnusedAddress
-          { model
-          | addressedDevices = model.addressedDevices ++ [{address = a, types = t, edaliClass = Nothing}]
+          { model | addressedDevices = model.addressedDevices ++ [{address = a, types = t, edaliClass = Nothing}]
           }
       else
         model
     AddEdaliDevice a ->
       if model.addressing
       then
-        { model
-        | addressedDevices = model.addressedDevices ++ [{address = a, types = [], edaliClass = model.edaliClass}]
+        { model | addressedDevices = model.addressedDevices ++ [{address = a, types = [], edaliClass = model.edaliClass}]
         }
       else
         model
     SetGatewayData macAddr hostname activeLines lineNames'  ->
-      { model
-      | mac = macAddr
-      , name = hostname
-      , lines = activeLines
-      , lineNames = lineNames'
+      { model | mac = macAddr,
+                name = hostname,
+                lines = activeLines,
+                lineNames = lineNames'
       }
     UnaddressedState state ->
       if state == 0
@@ -176,37 +140,39 @@ update timeStamp action model =
         update
           timeStamp
           (DisplayError errorStringForCompletion)
-          { model
-          | unaddressedState = Just False
+          { model | unaddressedState = Just False
           }
       else
-        { model
-        | unaddressedState = Just True
+        { model | unaddressedState = Just True
         }
     UpdateWindowSize size ->
-      { model
-      | windowSize = size
+      { model | windowSize = size
       }
 
+initialModel : Model
+initialModel =
+  { mac = ""
+  , name = ""
+  , addressingLine = Nothing
+  , edaliClass = Just 3
+  , lines = []
+  , lineNames = []
+  , addressedDevices = []
+  , addressing = False
+  , unaddressedState = Nothing
+  , error = ""
+  , helpText = ""
+  , unusedAddresses = []
+  , addressingStart = Nothing
+  , addressingEnd = Nothing
+  , windowSize = (0,0)
+  }
+
 -- The application's state
-model : Signal Model
+model : Signal (Model)
 model =
-  Signal.foldp (uncurry update) { mac = ""
-                      , name = ""
-                      , addressingLine = Nothing
-                      , edaliClass = Just 3
-                      , lines = []
-                      , lineNames = []
-                      , addressedDevices = []
-                      , addressing = False
-                      , unaddressedState = Nothing
-                      , error = ""
-                      , helpText = ""
-                      , unusedAddresses = []
-                      , addressingStart = Nothing
-                      , addressingEnd = Nothing
-                      , windowSize = (0,0)
-                      } <| Time.timestamp actions.signal
+  Time.timestamp actions.signal
+  |> Signal.foldp (uncurry update) initialModel
 
 deviceTypeToImageName : Int -> String
 deviceTypeToImageName deviceType =
@@ -238,7 +204,7 @@ devicesToDivList =
   in
     List.map (\device -> div [] <| deviceTypesToImages device.types ++ [ text <| deviceToLabel device ])
 
-view : Signal.Address (Action) -> Model -> Html
+view : Signal.Address (Action) -> (Model) -> Html
 view address model =
   let returnButton = button [ onClick address UnsetAddressingLine ] [ text "Return" ]
       buttons = if isJust model.addressingLine
@@ -307,18 +273,14 @@ actions : Signal.Mailbox Action
 actions =
   Signal.mailbox <| NoOp
 
-port windowSizeUpdate : Signal (Task x ())
+port windowSizeUpdate : Signal (Task never ())
 port windowSizeUpdate =
   Signal.map UpdateWindowSize Window.dimensions
   |> Signal.map (Signal.send actions.address)
 
 port requests : Signal (Task x ())
 port requests =
-  Signal.map2 Gateway.queryGatewayWithMethod query.signal (Signal.constant gatewayResolve)
-  |> Signal.map
-    (\task -> Task.map (\_ -> task) (Signal.send actions.address EraseError)
-    `andThen` Task.toResult
-    `andThen` (Result.extract DisplayError >> Signal.send actions.address))
+  Gateway.sendGatewayRequest query.signal gatewayDecoder actions.address
 
 port addressingAssistant : Signal (Task String ())
 port addressingAssistant =
@@ -327,8 +289,8 @@ port addressingAssistant =
 sendAddressingJsonBasedOnModel : (Model, Action) -> Task String ()
 sendAddressingJsonBasedOnModel (model, action) =
   let
-    sendQuery a =
-      Maybe.withDefault (succeed ()) <| Maybe.map (a >> Signal.send query.address) model.addressingLine
+    sendQuery query' =
+      Maybe.withDefault (succeed ()) <| Maybe.map (query' >> Signal.send query.address) model.addressingLine
     setUnaddressedQuery' =
       Maybe.map (\class -> flip (flip Gateway.setUnaddressedQuery Nothing) <| Just class) model.edaliClass
       |> Maybe.withDefault (flip (flip Gateway.setUnaddressedQuery <| List.head model.unusedAddresses) Nothing)
@@ -361,8 +323,8 @@ sendAddressingJsonBasedOnModel (model, action) =
         else succeed ()
       _ -> succeed ()
 
-gatewayResolve : Decoder Action
-gatewayResolve =
+gatewayDecoder : Decoder Action
+gatewayDecoder =
   Decode.oneOf
     [ Decode.object1 DisplayError (Decode.at ["error", "message"] Decode.string)
     , Decode.object4 SetGatewayData (Decode.at ["result", "mac"] Decode.string) (Decode.at ["result", "hostname"] Decode.string) (Decode.at ["result", "activelines"] <| Decode.list Decode.int) (Decode.at ["result", "linenames"] <| Decode.list Decode.string)

@@ -26,12 +26,9 @@ pageHeader (windowWidth, windowHeight) excludeLinkName =
     logoHeight = 48
     logoWidth = 173
     headerBarHeight = 10
-    bannerHeight =
-      logoHeight + headerBarHeight
-    preliminaryBannerWidth =
-      round ((toFloat windowWidth) * 0.6)
-    minBannerWidth =
-      980
+    bannerHeight = logoHeight + headerBarHeight
+    preliminaryBannerWidth = round ((toFloat windowWidth) * 0.6)
+    minBannerWidth = 980
     bannerWidth =
       if preliminaryBannerWidth < minBannerWidth
       then minBannerWidth
@@ -41,8 +38,7 @@ pageHeader (windowWidth, windowHeight) excludeLinkName =
       |> List.map (\(name, linkLocation) -> link linkLocation (leftAligned <| Text.height 20 <| Text.color (rgb 116 195 219) <| Text.fromString name))
       |> List.intersperse (spacer 20 20)
       |> flow right
-    bannerContainer =
-      container bannerWidth bannerHeight
+    bannerContainer = container bannerWidth bannerHeight
     collagedElements =
       collage bannerWidth bannerHeight
         [ rect (toFloat bannerWidth) (toFloat bannerHeight)
