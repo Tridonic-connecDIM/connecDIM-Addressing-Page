@@ -91,8 +91,8 @@ readGatewayQuery = Encode.object [ ("method", Encode.string "readgateway"), ("pa
 resolveRequest : Signal (Signal.Address Action) -> Signal (Task String Action) -> Signal (Task a ())
 resolveRequest =
   Signal.map2 (\address task -> Task.map (\_ -> task) (Signal.send address EraseError)
-  `Task.andThen` Task.toResult
-  `Task.andThen` (Result.extract DisplayError >> Signal.send address))
+                                `Task.andThen` Task.toResult
+                                `Task.andThen` (Result.extract DisplayError >> Signal.send address))
 
 sendGatewayRequest : Signal Encode.Value -> Decoder Action -> Signal.Address Action -> Signal (Task a ())
 sendGatewayRequest query decoder address =
