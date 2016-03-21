@@ -51,7 +51,7 @@ edaliSwitchClassErrorString =
   "There are no unaddressed eDALI devices on the DALI line"
 
 main =
-  Signal.map (view actions.address) model
+  Signal.map2 (view actions.address) Window.dimensions model
 
 update : Time -> Action -> Model -> Model
 update timeStamp action model =
@@ -145,9 +145,6 @@ update timeStamp action model =
       else
         { model | unaddressedState = Just True
         }
-    UpdateWindowSize size ->
-      { model | windowSize = size
-      }
 
 initialModel : Model
 initialModel =
@@ -165,7 +162,6 @@ initialModel =
   , unusedAddresses = []
   , addressingStart = Nothing
   , addressingEnd = Nothing
-  , windowSize = (0,0)
   }
 
 -- The application's state
@@ -204,8 +200,8 @@ devicesToDivList =
   in
     List.map (\device -> div [] <| deviceTypesToImages device.types ++ [ text <| deviceToLabel device ])
 
-view : Signal.Address (Action) -> (Model) -> Html
-view address model =
+view : Signal.Address (Action) -> (Int, Int) -> Model -> Html
+view address windowSize model =
   let returnButton = button [ onClick address UnsetAddressingLine ] [ text "Return" ]
       buttons = if isJust model.addressingLine
                 then
@@ -242,7 +238,7 @@ view address model =
         <| Maybe.map (Time.inSeconds >> round >> mintuesToOneDecimalPlaceString >> \s -> "The last addressing session took " ++ s ++ " minutes") <| Maybe.map2 (-) model.addressingEnd model.addressingStart
   in
     div []
-      [ div [] [ fromElement <| Tridonic.pageHeader model.windowSize "Addressing" ]
+      [ div [] [ fromElement <| Tridonic.pageHeader windowSize "Addressing" ]
       , div [textStyle] <|
         ([model.name
         , model.mac
@@ -272,11 +268,6 @@ query =
 actions : Signal.Mailbox Action
 actions =
   Signal.mailbox <| NoOp
-
-port windowSizeUpdate : Signal (Task never ())
-port windowSizeUpdate =
-  Signal.map UpdateWindowSize Window.dimensions
-  |> Signal.map (Signal.send actions.address)
 
 port requests : Signal (Task x ())
 port requests =

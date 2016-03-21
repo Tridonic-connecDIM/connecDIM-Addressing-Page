@@ -24,7 +24,7 @@ port title =
   "Main"
 
 main =
-  Signal.map view model
+  Signal.map2 view model Window.dimensions
 
 update : Time -> Action -> Model -> Model
 update timeStamp action model =
@@ -46,9 +46,6 @@ update timeStamp action model =
                 lines = activeLines,
                 lineNames = lineNames'
       }
-    UpdateWindowSize size ->
-      { model | windowSize = size
-      }
     _ -> model
 
 initialModel : Model
@@ -59,7 +56,6 @@ initialModel =
   , lineNames = []
   , error = ""
   , helpText = ""
-  , windowSize = (0,0)
   }
 
 -- The application's state
@@ -68,11 +64,9 @@ model =
   Time.timestamp actions.signal
   |> Signal.foldp (uncurry update) initialModel
 
-view : Model -> Element
-view model =
-  let windowWidth = fst model.windowSize
-      windowHeight = snd model.windowSize
-      pageHeader = Tridonic.pageHeader model.windowSize "Main"
+view : Model -> (Int, Int) -> Element
+view model (windowWidth, windowHeight) =
+  let pageHeader = Tridonic.pageHeader (windowWidth, windowHeight) "Main"
       centeredContainer = flip (container windowWidth) middle
   in
     [ pageHeader
@@ -88,11 +82,6 @@ query =
 actions : Signal.Mailbox Action
 actions =
   Signal.mailbox NoOp
-
-port windowSizeUpdate : Signal (Task never ())
-port windowSizeUpdate =
-  Signal.map UpdateWindowSize Window.dimensions
-  |> Signal.map (Signal.send actions.address)
 
 port requests : Signal (Task x ())
 port requests =

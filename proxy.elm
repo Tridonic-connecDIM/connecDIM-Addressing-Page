@@ -24,7 +24,7 @@ port title : String
 port title = titleString
 
 main =
-  Signal.map2 view model nameField
+  Signal.map3 view model Window.dimensions nameField
 
 update : Action -> Model -> Model
 update action model =
@@ -50,10 +50,6 @@ update action model =
       , lines = activeLines
       , lineNames = lineNames'
       }
-    UpdateWindowSize size ->
-      { model
-      | windowSize = size
-      }
     _ -> model
 
 initialModel : Model
@@ -64,7 +60,6 @@ initialModel =
   , lineNames = []
   , error = ""
   , helpText = ""
-  , windowSize = (0,0)
   }
 
 -- The application's state
@@ -73,11 +68,9 @@ model =
   actions.signal
   |> Signal.foldp update initialModel
 
-view : Model -> Element -> Element
-view model textField =
-  let windowWidth = fst model.windowSize
-      windowHeight = snd model.windowSize
-      pageHeader = Tridonic.pageHeader model.windowSize titleString
+view : Model -> (Int, Int) -> Element -> Element
+view model (windowWidth, windowHeight) textField =
+  let pageHeader = Tridonic.pageHeader (windowWidth, windowHeight) titleString
       centeredContainer = \value -> container windowWidth (heightOf value) middle value
   in
     [ pageHeader
@@ -93,11 +86,6 @@ query = Signal.mailbox <| Gateway.readGatewayQuery
 
 actions : Signal.Mailbox Action
 actions = Signal.mailbox NoOp
-
-port windowSizeUpdate : Signal (Task never ())
-port windowSizeUpdate =
-  Signal.map UpdateWindowSize Window.dimensions
-  |> Signal.map (Signal.send actions.address)
 
 name : Signal.Mailbox Content
 name = Signal.mailbox noContent

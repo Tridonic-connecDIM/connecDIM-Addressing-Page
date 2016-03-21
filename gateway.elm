@@ -34,7 +34,6 @@ type Action = NoOp
             | UnaddressedState Int
             | SetUnusedAddresses (List Int)
             | DropOneUnusedAddress
-            | UpdateWindowSize (Int, Int)
 
 type alias GatewayModel a =
   { a | mac : String,
@@ -42,8 +41,7 @@ type alias GatewayModel a =
         lines : List Int,
         lineNames : List String,
         error : String,
-        helpText : String,
-        windowSize : (Int, Int)
+        helpText : String
   }
 
 echoJson : Encode.Value -> Encode.Value
